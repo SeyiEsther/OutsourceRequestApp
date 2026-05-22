@@ -375,23 +375,7 @@
         </a>
 
         <div class="nav-links">
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")"
-               asp-controller="Home" asp-action="Index">Home</a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Create" ? "active" : "")"
-               asp-controller="Outsource" asp-action="Create">New Request</a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" && ViewContext.RouteData.Values["controller"]?.ToString() == "Outsource" ? "active" : "")"
-               asp-controller="Outsource" asp-action="Index">All Requests</a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "MyRequests" ? "active" : "")"
-               asp-controller="Outsource" asp-action="MyRequests">My Requests</a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "MyApprovals" ? "active" : "")"
-               asp-controller="Outsource" asp-action="MyApprovals">My Approvals</a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "")"
-               asp-controller="Admin" asp-action="Index">Admin</a>
+            @await Component.InvokeAsync("NavContext")
         </div>
 
         <div class="nav-user">@User.Identity?.Name</div>
