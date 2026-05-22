@@ -1,0 +1,325 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Outsource Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --red: #e30613;
+            --red-dark: #b90510;
+            --bg: #0c0c0e;
+            --surface: #141416;
+            --surface2: #1c1c1f;
+            --border: rgba(255,255,255,0.07);
+            --border2: rgba(255,255,255,0.12);
+            --text: #f0f0f2;
+            --muted: #8b8b94;
+            --font: 'DM Sans', sans-serif;
+            --mono: 'DM Mono', monospace;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 14px;
+            min-height: 100vh;
+        }
+
+        /* NAV */
+        .site-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            height: 52px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .nav-brand-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--red);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2px;
+        }
+
+        .nav-link {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--muted);
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+            .nav-link:hover,
+            .nav-link.active {
+                color: var(--text);
+                background: var(--surface2);
+            }
+
+        .nav-user {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        /* SHARED BUTTONS */
+        .btn-primary {
+            padding: 9px 22px;
+            background: var(--red);
+            border: none;
+            border-radius: 7px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.15s;
+            font-family: var(--font);
+        }
+
+            .btn-primary:hover {
+                background: var(--red-dark);
+                color: #fff;
+            }
+
+        .btn-ghost {
+            padding: 8px 20px;
+            background: transparent;
+            border: 1px solid var(--border2);
+            border-radius: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.15s;
+            font-family: var(--font);
+        }
+
+            .btn-ghost:hover {
+                border-color: var(--border2);
+                color: var(--text);
+                background: var(--surface2);
+            }
+
+        /* SECTION DIVIDER */
+        .section-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--red);
+            margin-bottom: 14px;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .section-label::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+
+        /* BADGE */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+            .badge::before {
+                content: '';
+                width: 5px;
+                height: 5px;
+                border-radius: 50%;
+            }
+
+        .badge-submitted {
+            background: rgba(227,6,19,0.12);
+            color: #ff4d58;
+            border: 1px solid rgba(227,6,19,0.3);
+        }
+
+            .badge-submitted::before {
+                background: #ff4d58;
+            }
+
+        .badge-approved {
+            background: rgba(34,197,94,0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34,197,94,0.25);
+        }
+
+            .badge-approved::before {
+                background: #4ade80;
+            }
+
+        .badge-review {
+            background: rgba(245,158,11,0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(245,158,11,0.25);
+        }
+
+            .badge-review::before {
+                background: #fbbf24;
+            }
+
+        .badge-rejected {
+            background: rgba(239,68,68,0.1);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.25);
+        }
+
+            .badge-rejected::before {
+                background: #f87171;
+            }
+
+        /* FORM CARD */
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 4px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+            .field.span-2 {
+                grid-column: 1 / -1;
+            }
+
+            .field label {
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+
+            .field input,
+            .field textarea,
+            .field select {
+                background: var(--bg);
+                color: var(--text);
+                border: 1px solid var(--border);
+                border-radius: 7px;
+                padding: 9px 12px;
+                font-family: var(--font);
+                font-size: 13px;
+                transition: border 0.15s;
+                width: 100%;
+            }
+
+                .field input:focus,
+                .field textarea:focus,
+                .field select:focus {
+                    border-color: var(--red);
+                    outline: none;
+                }
+
+                .field input:disabled {
+                    color: var(--muted);
+                    cursor: not-allowed;
+                }
+
+            .field textarea {
+                min-height: 110px;
+                resize: vertical;
+            }
+
+        /* FOOTER */
+        .site-footer {
+            margin-top: 80px;
+            padding: 20px 28px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="site-nav">
+        <a class="nav-brand" asp-controller="Home" asp-action="Index">
+            <div class="nav-brand-dot"></div>
+            Outsource Portal
+        </a>
+
+        <div class="nav-links">
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")"
+               asp-controller="Home" asp-action="Index">Home</a>
+
+            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Create" ? "active" : "")"
+               asp-controller="Outsource" asp-action="Create">New Request</a>
+
+            <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" && ViewContext.RouteData.Values["controller"]?.ToString() == "Outsource" ? "active" : "")"
+               asp-controller="Outsource" asp-action="Index">All Requests</a>
+        </div>
+
+        <div class="nav-user">@User.Identity?.Name</div>
+    </nav>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        &copy; @DateTime.Now.Year Outsource Request Portal — Internal Use Only
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

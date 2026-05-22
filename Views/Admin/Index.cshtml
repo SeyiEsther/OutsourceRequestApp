@@ -1,0 +1,393 @@
+﻿@using OutsourceRequestApp.Models
+
+@{
+    ViewData["Title"] = "Admin Panel";
+    var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
+
+    ApproverRole? GetRole(string key) => roles.FirstOrDefault(r => r.RoleKey == key);
+    var sc = GetRole("SC");
+    var finance = GetRole("Finance");
+    var md = GetRole("MD");
+}
+
+<style>
+    .admin-wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 40px 24px 60px;
+    }
+
+    .pg-title {
+        font-size: 22px;
+        font-weight: 500;
+        margin-bottom: 6px;
+    }
+
+    .pg-sub {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 32px;
+    }
+
+    .success-banner {
+        background: rgba(34,197,94,.08);
+        border: 1px solid rgba(34,197,94,.25);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #4ade80;
+        margin-bottom: 20px;
+    }
+
+    .admin-section-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: var(--muted);
+        margin-bottom: 14px;
+        margin-top: 28px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+        .admin-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+    .role-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .role-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 22px;
+    }
+
+    .role-stage {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: var(--red);
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+
+    .role-title {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 16px;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-bottom: 12px;
+    }
+
+        .field label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .field input {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-family: var(--font);
+            font-size: 13px;
+            width: 100%;
+        }
+
+            .field input:focus {
+                border-color: var(--red);
+                outline: none;
+            }
+
+    .btn-save {
+        padding: 8px 20px;
+        background: var(--red);
+        border: none;
+        border-radius: 7px;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: var(--font);
+        margin-top: 4px;
+    }
+
+        .btn-save:hover {
+            background: var(--red-dark);
+        }
+
+    .btn-ghost {
+        padding: 8px 20px;
+        background: transparent;
+        border: 1px solid var(--border2);
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: 12px;
+        cursor: pointer;
+        font-family: var(--font);
+    }
+
+        .btn-ghost:hover {
+            color: var(--text);
+            background: var(--surface2);
+        }
+
+    .smtp-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 22px;
+    }
+
+    .smtp-hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 16px;
+        line-height: 1.6;
+    }
+
+    .smtp-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .whitelist-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 22px;
+    }
+
+    .wl-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+        .wl-item:last-child {
+            border-bottom: none;
+        }
+
+    .wl-name {
+        font-family: var(--mono);
+        font-size: 12px;
+    }
+
+    .wl-remove {
+        font-size: 12px;
+        color: #f87171;
+        cursor: pointer;
+        background: none;
+        border: none;
+        font-family: var(--font);
+    }
+
+    .wl-add {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+        .wl-add input {
+            flex: 1;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-family: var(--font);
+            font-size: 13px;
+        }
+
+            .wl-add input:focus {
+                border-color: var(--red);
+                outline: none;
+            }
+</style>
+
+<div class="admin-wrap">
+
+    <div class="pg-title">Admin Panel</div>
+    <div class="pg-sub">Configure approvers, email settings, and admin access</div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="success-banner">✓ @TempData["Success"]</div>
+    }
+
+    <!-- APPROVER ROLES -->
+    <div class="admin-section-label">Approval role assignments</div>
+    <div class="role-grid">
+
+        @foreach (var (roleKey, displayName, roleVar) in new[] {
+                ("SC",      "Supply Chain Manager",  sc),
+                ("Finance", "Finance Director",      finance),
+                ("MD",      "Managing Director",     md)
+                })
+        {
+            <div class="role-card">
+                <div class="role-stage">Stage @(roleKey == "SC" ? "1" : roleKey == "Finance" ? "2" : "3")</div>
+                <div class="role-title">@displayName</div>
+                <form asp-action="SaveRole" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="roleKey" value="@roleKey" />
+                    <input type="hidden" name="roleDisplayName" value="@displayName" />
+                    <div class="field">
+                        <label>Windows username</label>
+                        <input name="username" value="@(roleVar?.Username ?? "")" placeholder="DOMAIN\username" />
+                    </div>
+                    <div class="field">
+                        <label>Full name</label>
+                        <input name="fullName" value="@(roleVar?.FullName ?? "")" placeholder="e.g. Sarah Jones" />
+                    </div>
+                    <div class="field">
+                        <label>Email address</label>
+                        <input name="email" type="email" value="@(roleVar?.Email ?? "")" placeholder="s.jones@company.com" />
+                    </div>
+                    <button type="submit" class="btn-save">Save</button>
+                </form>
+            </div>
+        }
+
+        <!-- REMINDER INTERVAL -->
+        <div class="role-card">
+            <div class="role-stage">Reminders</div>
+            <div class="role-title">Email Reminder Interval</div>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+                Send a chase email to the current approver if they haven't acted after this many hours.
+            </p>
+            <form asp-action="SaveSettings" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="smtpHost" value="@ViewBag.SmtpHost" />
+                <input type="hidden" name="smtpPort" value="@ViewBag.SmtpPort" />
+                <input type="hidden" name="smtpFrom" value="@ViewBag.SmtpFrom" />
+                <input type="hidden" name="smtpFromName" value="@ViewBag.SmtpFromName" />
+                <input type="hidden" name="emailDomain" value="@ViewBag.EmailDomain" />
+                <div class="field">
+                    <label>Hours before reminder</label>
+                    <input name="reminderHours" type="number" min="1" value="@(ViewBag.ReminderHours ?? "24")" />
+                </div>
+                <button type="submit" class="btn-save">Save</button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- SMTP SETTINGS -->
+    <div class="admin-section-label">Email / SMTP settings</div>
+    <div class="smtp-card">
+        <p class="smtp-hint">
+            Ask IT for your internal SMTP relay address. On most company networks this is something like
+            <code style="font-family:var(--mono);font-size:11px;color:var(--text)">smtp.yourcompany.local</code> on port 25.
+            Leave credentials blank if your network uses Windows integrated auth (most do).
+        </p>
+        <form asp-action="SaveSettings" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="reminderHours" value="@ViewBag.ReminderHours" />
+            <div class="smtp-grid">
+                <div class="field">
+                    <label>SMTP server</label>
+                    <input name="smtpHost" value="@ViewBag.SmtpHost" placeholder="smtp.yourcompany.local" />
+                </div>
+                <div class="field">
+                    <label>Port</label>
+                    <input name="smtpPort" value="@(ViewBag.SmtpPort ?? "25")" placeholder="25" />
+                </div>
+                <div class="field">
+                    <label>From address</label>
+                    <input name="smtpFrom" value="@ViewBag.SmtpFrom" placeholder="outsource-portal@yourcompany.com" />
+                </div>
+                <div class="field">
+                    <label>From display name</label>
+                    <input name="smtpFromName" value="@(ViewBag.SmtpFromName ?? "Outsource Portal")" />
+                </div>
+                <div class="field">
+                    <label>Company email domain</label>
+                    <input name="emailDomain" value="@ViewBag.EmailDomain" placeholder="yourcompany.com" />
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:8px;">
+                <button type="submit" class="btn-save">Save settings</button>
+            </div>
+        </form>
+        <form asp-action="TestEmail" method="post" style="margin-top:10px;">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-ghost">Send test email to myself</button>
+        </form>
+    </div>
+
+    <!-- ADMIN USERS -->
+    <div class="admin-section-label">Admin users</div>
+    <div class="whitelist-card">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+            These Windows usernames have access to this Admin panel.
+        </p>
+
+        @{
+            var adminList = (ViewBag.AdminUsers as string ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(a => a.Trim())
+            .Where(a => !string.IsNullOrEmpty(a))
+            .ToList();
+        }
+
+        @foreach (var admin in adminList)
+        {
+            <div class="wl-item">
+                <span class="wl-name">@admin</span>
+                <form asp-action="SaveAdmins" method="post" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="adminUsers"
+                           value="@string.Join(",", adminList.Where(a => a != admin))" />
+                    <button type="submit" class="wl-remove">Remove</button>
+                </form>
+            </div>
+        }
+
+        <form asp-action="SaveAdmins" method="post">
+            @Html.AntiForgeryToken()
+            <div class="wl-add">
+                <input id="newAdminInput" placeholder="DOMAIN\username" />
+                <input type="hidden" id="adminUsersHidden" name="adminUsers"
+                       value="@ViewBag.AdminUsers" />
+                <button type="submit" class="btn-save" onclick="appendAdmin()">Add</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        function appendAdmin() {
+            var newUser  = document.getElementById('newAdminInput').value.trim();
+            var existing = document.getElementById('adminUsersHidden').value;
+            if (newUser) {
+                document.getElementById('adminUsersHidden').value =
+                    existing ? existing + ',' + newUser : newUser;
+            }
+        }
+    </script>
+}

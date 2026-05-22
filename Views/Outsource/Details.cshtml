@@ -1,0 +1,331 @@
+﻿@model OutsourceRequestApp.Models.OutsourceRequest
+
+@{
+    ViewData["Title"] = "New Request";
+}
+
+<style>
+    .form-wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 44px 28px 60px;
+    }
+
+    .form-header {
+        margin-bottom: 32px;
+    }
+
+        .form-header h2 {
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .form-header p {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+    .part-wrap {
+        position: relative;
+    }
+
+    .suggestions {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        z-index: 50;
+        overflow: hidden;
+        display: none;
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+        .suggestions li {
+            list-style: none;
+            padding: 9px 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            transition: background 0.12s;
+        }
+
+            .suggestions li:hover {
+                background: rgba(227, 6, 19, 0.1);
+            }
+
+    .sug-num {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text);
+        flex-shrink: 0;
+    }
+
+    .sug-desc {
+        font-size: 12px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .char-count {
+        font-size: 11px;
+        color: var(--muted);
+        text-align: right;
+        margin-top: 4px;
+    }
+
+    .submit-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 28px;
+    }
+
+    .validation-summary {
+        background: rgba(239,68,68,0.08);
+        border: 1px solid rgba(239,68,68,0.25);
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #f87171;
+    }
+
+        .validation-summary ul {
+            margin-left: 16px;
+            margin-top: 6px;
+        }
+
+        .validation-summary li {
+            margin-bottom: 3px;
+        }
+
+    .field-error {
+        font-size: 11px;
+        color: #f87171;
+        margin-top: 3px;
+    }
+
+    .field input.input-error,
+    .field textarea.input-error {
+        border-color: rgba(239,68,68,0.5);
+    }
+</style>
+
+<div class="form-wrap">
+
+    <div class="form-header">
+        <h2>New Outsource Request</h2>
+        <p>Section 1 — Work Preparation. Supply Chain &amp; Finance complete Section 2 after submission.</p>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="validation-summary">
+            <strong>Please fix the following errors:</strong>
+            <ul>
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <div class="section-label">Part details</div>
+        <div class="form-card">
+            <div class="form-grid">
+
+                <div class="field">
+                    <label>Created by</label>
+                    <input value="@User.Identity?.Name" disabled />
+                </div>
+
+                <div class="field">
+                    <label>Drawing number</label>
+                    <input asp-for="DrawingNumber" placeholder="e.g. DRW-00412" />
+                </div>
+
+                <div class="field">
+                    <label>Part number *</label>
+                    <div class="part-wrap">
+                        <input id="partNumber"
+                               asp-for="PartNumber"
+                               placeholder="Search SAP part number…"
+                               autocomplete="off" />
+                        <ul id="suggestions" class="suggestions"></ul>
+                    </div>
+                    <span asp-validation-for="PartNumber" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label>SAP description</label>
+                    <input id="partDescription"
+                           asp-for="SapDescription"
+                           placeholder="Auto-filled from SAP"
+                           readonly />
+                </div>
+
+                <div class="field">
+                    <label>Quantity *</label>
+                    <input asp-for="Quantity" type="number" min="1" placeholder="0" />
+                    <span asp-validation-for="Quantity" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label>Start date</label>
+                    <input asp-for="StartDate" type="date" />
+                </div>
+
+                <div class="field">
+                    <label>End date</label>
+                    <input asp-for="EndDate" type="date" />
+                </div>
+
+            </div>
+        </div>
+
+        <div class="section-label">Reason for request</div>
+        <div class="form-card">
+            <div class="field">
+                <label>Why can't this be produced in-house? *</label>
+                <textarea id="reasonText"
+                          asp-for="Reason"
+                          placeholder="Include capacity constraints, machine availability, skill gaps, or any other relevant details…"
+                          maxlength="1000"></textarea>
+                <div class="char-count"><span id="charCount">0</span> / 1000</div>
+                <span asp-validation-for="Reason" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="section-label">Attachments</div>
+        <div class="form-card">
+            <div class="field">
+                <label>Supporting image or document (optional)</label>
+                <input type="file" name="imageUpload" accept="image/*,.pdf" />
+            </div>
+            <div id="imagePreview" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="submit-row">
+            <a class="btn-ghost" asp-controller="Home" asp-action="Index">Cancel</a>
+            <button type="submit" class="btn-primary">Submit Request →</button>
+        </div>
+
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        const partInput  = document.getElementById('partNumber');
+        const descInput  = document.getElementById('partDescription');
+        const suggBox    = document.getElementById('suggestions');
+        const reasonTA   = document.getElementById('reasonText');
+        const charCount  = document.getElementById('charCount');
+
+        let validPartSelected = false;
+        let selectingSuggestion = false;
+
+        // Character counter
+        reasonTA.addEventListener('input', () => {
+            charCount.textContent = reasonTA.value.length;
+        });
+
+        // SAP lookup
+        async function searchParts(term) {
+            const res = await fetch(`/Outsource/SearchPart?term=${encodeURIComponent(term)}`);
+            return await res.json();
+        }
+
+        partInput.addEventListener('input', async () => {
+            validPartSelected = false;
+            descInput.value = '';
+
+            const term = partInput.value.trim();
+            if (term.length < 2) { suggBox.style.display = 'none'; return; }
+
+            const data = await searchParts(term);
+            suggBox.innerHTML = '';
+
+            data.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="sug-num">${p.partNumber}</span><span class="sug-desc">${p.description}</span>`;
+
+                li.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    selectingSuggestion = true;
+                    partInput.value  = p.partNumber;
+                    descInput.value  = p.description;
+                    validPartSelected = true;
+                    suggBox.style.display = 'none';
+                    setTimeout(() => selectingSuggestion = false, 0);
+                });
+
+                suggBox.appendChild(li);
+            });
+
+            suggBox.style.display = data.length ? 'block' : 'none';
+        });
+
+        partInput.addEventListener('blur', async () => {
+            if (selectingSuggestion || validPartSelected) return;
+
+            const value = partInput.value.trim();
+            if (!value) return;
+
+            const data = await searchParts(value);
+            const match = data.find(p => p.partNumber.toLowerCase() === value.toLowerCase());
+
+            if (match) {
+                descInput.value  = match.description;
+                descInput.style.color = '';
+                validPartSelected = true;
+            } else {
+                descInput.value  = 'Part not found in SAP';
+                descInput.style.color = '#f87171';
+                validPartSelected = false;
+            }
+        });
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.part-wrap')) suggBox.style.display = 'none';
+        });
+
+        document.querySelector('form').addEventListener('submit', e => {
+            if (!validPartSelected) {
+                e.preventDefault();
+                alert('Please select a valid SAP part number before submitting.');
+            }
+        });
+
+        // Image preview
+        document.querySelector('input[name="imageUpload"]').addEventListener('change', function () {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            const file = this.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'max-width:220px;border-radius:8px;border:1px solid var(--border);margin-top:8px;';
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+}

@@ -1,0 +1,715 @@
+﻿@model OutsourceRequestApp.Models.OutsourceRequest
+@using OutsourceRequestApp.Models
+
+@{
+    ViewData["Title"] = $"Track OSR-{Model.RequestId:000000}";
+
+    var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
+    var currentUser = ViewBag.CurrentUsername as string ?? "";
+
+    var sc = roles.FirstOrDefault(r => r.RoleKey == "SC");
+    var finance = roles.FirstOrDefault(r => r.RoleKey == "Finance");
+    var md = roles.FirstOrDefault(r => r.RoleKey == "MD");
+
+    bool scDone = Model.ScReviewedAt.HasValue;
+    bool financeDone = Model.FinanceReviewedAt.HasValue;
+    bool mdDone = Model.MdReviewedAt.HasValue;
+
+    bool scPending = Model.Status == "Submitted";
+    bool financePending = Model.Status == "Finance_Pending";
+    bool mdPending = Model.Status == "MD_Pending";
+
+    bool isScApprover = sc != null && sc.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isFinanceApprover = finance != null && finance.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isMdApprover = md != null && md.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+
+    string badgeClass = Model.Status switch
+    {
+        "Approved" => "b-app",
+        "Rejected" => "b-rej",
+        "Finance_Pending" or "MD_Pending" => "b-rev",
+        _ => "b-sub"
+    };
+
+    string badgeLabel = Model.Status switch
+    {
+        "Finance_Pending" => "Finance Review",
+        "MD_Pending" => "MD Review",
+        _ => Model.Status
+    };
+
+    var waiting = DateTime.Now - Model.CreatedAt;
+    string waitingStr = waiting.TotalDays >= 1
+        ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
+        : $"{waiting.Hours}h {waiting.Minutes}m";
+}
+
+<style>
+    .track-wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 40px 24px 60px;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        margin-bottom: 24px;
+        transition: color .15s;
+    }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+    .track-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 36px;
+    }
+
+    .req-id {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 5px;
+    }
+
+    .req-title {
+        font-size: 22px;
+        font-weight: 500;
+    }
+
+    .req-meta {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 5px;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+        .badge::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+        }
+
+    .b-sub {
+        background: rgba(227,6,19,.12);
+        color: #ff4d58;
+        border: 1px solid rgba(227,6,19,.3);
+    }
+
+        .b-sub::before {
+            background: #ff4d58;
+        }
+
+    .b-rev {
+        background: rgba(245,158,11,.1);
+        color: #fbbf24;
+        border: 1px solid rgba(245,158,11,.25);
+    }
+
+        .b-rev::before {
+            background: #fbbf24;
+        }
+
+    .b-app {
+        background: rgba(34,197,94,.1);
+        color: #4ade80;
+        border: 1px solid rgba(34,197,94,.25);
+    }
+
+        .b-app::before {
+            background: #4ade80;
+        }
+
+    .b-rej {
+        background: rgba(239,68,68,.1);
+        color: #f87171;
+        border: 1px solid rgba(239,68,68,.25);
+    }
+
+        .b-rej::before {
+            background: #f87171;
+        }
+
+    /* STEP BAR */
+    .steps {
+        display: flex;
+        align-items: flex-start;
+        margin: 0 0 36px;
+        position: relative;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        position: relative;
+        z-index: 1;
+    }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            right: -50%;
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+        }
+
+        .step:not(:last-child).s-done::after {
+            background: #22c55e;
+        }
+
+    .step-dot {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        border: 2px solid var(--border);
+        background: var(--surface2);
+        color: var(--muted);
+        position: relative;
+        z-index: 2;
+        transition: all .3s;
+    }
+
+    .step.s-done .step-dot {
+        background: rgba(34,197,94,.12);
+        border-color: #22c55e;
+        color: #4ade80;
+    }
+
+    .step.s-active .step-dot {
+        background: rgba(227,6,19,.1);
+        border-color: var(--red);
+        color: var(--red);
+        box-shadow: 0 0 0 5px rgba(227,6,19,.08);
+    }
+
+    .step-label {
+        margin-top: 9px;
+        font-size: 11px;
+        text-align: center;
+        color: var(--muted);
+        max-width: 72px;
+        line-height: 1.4;
+    }
+
+    .step.s-done .step-label {
+        color: #4ade80;
+    }
+
+    .step.s-active .step-label {
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    /* STAGE CARDS */
+    .stages {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .stage {
+        display: flex;
+        gap: 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+    }
+
+        .stage.s-done {
+            border-color: rgba(34,197,94,.2);
+        }
+
+        .stage.s-current {
+            border-color: rgba(227,6,19,.25);
+            background: rgba(227,6,19,.03);
+        }
+
+        .stage.s-rejected {
+            border-color: rgba(239,68,68,.25);
+        }
+
+    .stage-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .si-done {
+        background: rgba(34,197,94,.1);
+        color: #4ade80;
+    }
+
+    .si-cur {
+        background: rgba(227,6,19,.1);
+        color: var(--red);
+    }
+
+    .si-wait {
+        background: var(--surface2);
+        color: var(--muted);
+    }
+
+    .si-rej {
+        background: rgba(239,68,68,.1);
+        color: #f87171;
+    }
+
+    .stage-body {
+        flex: 1;
+    }
+
+    .stage-role {
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 3px;
+    }
+
+        .stage-role.muted {
+            color: var(--muted);
+            font-weight: 400;
+        }
+
+    .stage-person {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .stage-time {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-top: 4px;
+    }
+
+    .stage-comment {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+        font-style: italic;
+    }
+
+    /* APPROVE FORM */
+    .approve-form {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+    }
+
+        .approve-form textarea {
+            width: 100%;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 9px 12px;
+            font-family: var(--font);
+            font-size: 13px;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 10px;
+        }
+
+            .approve-form textarea:focus {
+                border-color: var(--red);
+                outline: none;
+            }
+
+        .approve-form label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+    .action-btns {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-approve {
+        padding: 8px 20px;
+        background: rgba(34,197,94,.1);
+        border: 1px solid rgba(34,197,94,.3);
+        border-radius: 7px;
+        color: #4ade80;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: var(--font);
+        transition: all .15s;
+    }
+
+        .btn-approve:hover {
+            background: rgba(34,197,94,.2);
+        }
+
+    .btn-reject {
+        padding: 8px 20px;
+        background: rgba(239,68,68,.08);
+        border: 1px solid rgba(239,68,68,.25);
+        border-radius: 7px;
+        color: #f87171;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: var(--font);
+        transition: all .15s;
+    }
+
+        .btn-reject:hover {
+            background: rgba(239,68,68,.15);
+        }
+
+    /* SC SECTION 2 */
+    .s2-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .field-sm {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+        .field-sm label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .field-sm input, .field-sm select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-family: var(--font);
+            font-size: 13px;
+            width: 100%;
+        }
+
+            .field-sm input:focus, .field-sm select:focus {
+                border-color: var(--red);
+                outline: none;
+            }
+
+    /* EMAIL NOTE */
+    .email-note {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+    }
+</style>
+
+<div class="track-wrap">
+
+    <a class="back-link" asp-controller="Outsource" asp-action="Index">← Back to all requests</a>
+
+    <div class="track-hero">
+        <div>
+            <div class="req-id">OSR-@Model.RequestId.ToString("000000")</div>
+            <div class="req-title">@(Model.SapDescription ?? Model.PartNumber)</div>
+            <div class="req-meta">
+                Part: @Model.PartNumber
+                · Qty: @Model.Quantity
+                · Submitted @Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")
+                · Waiting @waitingStr
+            </div>
+        </div>
+        <span class="badge @badgeClass">@badgeLabel</span>
+    </div>
+
+    <!-- STEP BAR -->
+    <div class="steps">
+        <div class="step s-done">
+            <div class="step-dot">✓</div>
+            <div class="step-label">Submitted</div>
+        </div>
+        <div class="step @(scDone ? "s-done" : scPending ? "s-active" : "")">
+            <div class="step-dot">@(scDone ? "✓" : "→")</div>
+            <div class="step-label">Supply Chain</div>
+        </div>
+        <div class="step @(financeDone ? "s-done" : financePending ? "s-active" : "")">
+            <div class="step-dot">@(financeDone ? "✓" : financePending ? "→" : "—")</div>
+            <div class="step-label">Finance</div>
+        </div>
+        <div class="step @(mdDone && Model.Status == "Approved" ? "s-done" : mdPending ? "s-active" : "")">
+            <div class="step-dot">@(mdDone && Model.Status == "Approved" ? "✓" : mdPending ? "→" : "—")</div>
+            <div class="step-label">MD Approval</div>
+        </div>
+        <div class="step @(Model.Status == "Approved" ? "s-done" : "")">
+            <div class="step-dot">@(Model.Status == "Approved" ? "✓" : "—")</div>
+            <div class="step-label">Complete</div>
+        </div>
+    </div>
+
+    <!-- STAGES -->
+    <div class="stages">
+
+        <!-- SUBMITTED -->
+        <div class="stage s-done">
+            <div class="stage-icon si-done">✓</div>
+            <div class="stage-body">
+                <div class="stage-role">Work Preparation — submitted</div>
+                <div class="stage-person">@Model.CreatedByUsername</div>
+                <div class="stage-time">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
+            </div>
+        </div>
+
+        <!-- SC -->
+        <div class="stage @(scDone ? "s-done" : scPending ? "s-current" : Model.Status == "Rejected" && !scDone ? "s-rejected" : "")">
+            <div class="stage-icon @(scDone ? "si-done" : scPending ? "si-cur" : "si-wait")">
+                @(scDone ? "✓" : scPending ? "→" : "—")
+            </div>
+            <div class="stage-body">
+                <div class="stage-role @(!scDone && !scPending ? "muted" : "")">
+                    Supply Chain Review
+                    @if (sc != null && (scDone || scPending))
+                    {
+                        <span style="font-weight:400;color:var(--muted)"> — @sc.FullName</span>
+                    }
+                </div>
+                <div class="stage-person">
+                    @if (scPending && sc != null)
+                    {
+                        <text>Awaiting PPAP decision and cost impact from @sc.FullName</text>
+                    }
+                    else if (scDone)
+                    {
+
+                        <text>Reviewed by @Model.ScReviewedBy</text>
+                    }
+                    else
+                    {
+
+                        <text>Not yet reached</text>
+                    }
+                </div>
+                @if (scDone)
+                {
+                    <div class="stage-time">@Model.ScReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
+                    @if (!string.IsNullOrEmpty(Model.ScComments))
+                    {
+                        <div class="stage-comment">"@Model.ScComments"</div>
+                    }
+                }
+                else
+                {
+                    <div class="stage-time">@(scPending ? "Pending" : "")</div>
+                }
+
+                @* SC approval form — only shown to SC approver when pending *@
+                @if (scPending && isScApprover)
+                {
+                    <div class="approve-form">
+                        <form asp-action="Review" asp-route-id="@Model.RequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="s2-grid">
+                                <div class="field-sm">
+                                    <label>PPAP required?</label>
+                                    <select name="ppapRequired">
+                                        <option value="false">No</option>
+                                        <option value="true">Yes</option>
+                                    </select>
+                                </div>
+                                <div class="field-sm">
+                                    <label>Cost impact comment</label>
+                                    <input name="costComments" placeholder="Optional note" />
+                                </div>
+                                <div class="field-sm">
+                                    <label>In-house cost / month (£)</label>
+                                    <input name="costInhouse" type="number" step="0.01" placeholder="0.00" />
+                                </div>
+                                <div class="field-sm">
+                                    <label>Outsource cost / month (£)</label>
+                                    <input name="costOutsource" type="number" step="0.01" placeholder="0.00" />
+                                </div>
+                            </div>
+                            <label>Comments (optional)</label>
+                            <textarea name="scComments" placeholder="Add any comments for Finance…"></textarea>
+                            <div class="action-btns">
+                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to Finance</button>
+                                <button type="submit" name="action" value="reject" class="btn-reject">✗ Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- FINANCE -->
+        <div class="stage @(financeDone ? "s-done" : financePending ? "s-current" : "")">
+            <div class="stage-icon @(financeDone ? "si-done" : financePending ? "si-cur" : "si-wait")">
+                @(financeDone ? "✓" : financePending ? "→" : "—")
+            </div>
+            <div class="stage-body">
+                <div class="stage-role @(!financeDone && !financePending ? "muted" : "")">
+                    Finance Director sign-off
+                    @if (finance != null && (financeDone || financePending))
+                    {
+                        <span style="font-weight:400;color:var(--muted)"> — @finance.FullName</span>
+                    }
+                </div>
+                <div class="stage-person">
+                    @if (financePending && finance != null)
+                    {
+                        <text>Awaiting sign-off from @finance.FullName</text>
+                    }
+                    else if (financeDone)
+                    {
+
+                        <text>Reviewed by @Model.FinanceReviewedBy</text>
+                    }
+                    else
+                    {
+
+                        <text>Not yet reached</text>
+                    }
+                </div>
+                @if (financeDone)
+                {
+                    <div class="stage-time">@Model.FinanceReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
+                    @if (!string.IsNullOrEmpty(Model.FinanceComments))
+                    {
+                        <div class="stage-comment">"@Model.FinanceComments"</div>
+                    }
+                }
+
+                @if (financePending && isFinanceApprover)
+                {
+                    <div class="approve-form">
+                        <form asp-action="ApproveFinance" asp-route-id="@Model.RequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <label>Comments (optional)</label>
+                            <textarea name="financeComments" placeholder="Add any comments for the MD…"></textarea>
+                            <div class="action-btns">
+                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to MD</button>
+                                <button type="submit" name="action" value="reject" class="btn-reject">✗ Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- MD -->
+        <div class="stage @(mdDone && Model.Status == "Approved" ? "s-done" : mdDone && Model.Status == "Rejected" ? "s-rejected" : mdPending ? "s-current" : "")">
+            <div class="stage-icon @(mdDone && Model.Status == "Approved" ? "si-done" : mdDone && Model.Status == "Rejected" ? "si-rej" : mdPending ? "si-cur" : "si-wait")">
+                @(mdDone && Model.Status == "Approved" ? "✓" : mdDone && Model.Status == "Rejected" ? "✗" : mdPending ? "→" : "—")
+            </div>
+            <div class="stage-body">
+                <div class="stage-role @(!mdDone && !mdPending ? "muted" : "")">
+                    Managing Director approval
+                    @if (md != null && (mdDone || mdPending))
+                    {
+                        <span style="font-weight:400;color:var(--muted)"> — @md.FullName</span>
+                    }
+                </div>
+                <div class="stage-person">
+                    @if (mdPending && md != null)
+                    {
+                        <text>Awaiting final approval from @md.FullName</text>
+                    }
+                    else if (mdDone && Model.Status == "Approved")
+                    {
+
+                        <text>Approved by @Model.MdReviewedBy — outsourcing authorised</text>
+                    }
+                    else if (mdDone && Model.Status == "Rejected")
+                    {
+
+                        <text>Rejected by @Model.MdReviewedBy</text>
+                    }
+                    else
+                    {
+
+                        <text>Not yet reached</text>
+                    }
+                </div>
+                @if (mdDone)
+                {
+                    <div class="stage-time">@Model.MdReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
+                    @if (!string.IsNullOrEmpty(Model.MdComments))
+                    {
+                        <div class="stage-comment">"@Model.MdComments"</div>
+                    }
+                }
+
+                @if (mdPending && isMdApprover)
+                {
+                    <div class="approve-form">
+                        <form asp-action="ApproveMD" asp-route-id="@Model.RequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <label>Comments (optional)</label>
+                            <textarea name="mdComments" placeholder="Final decision comments…"></textarea>
+                            <div class="action-btns">
+                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — authorise outsourcing</button>
+                                <button type="submit" name="action" value="reject" class="btn-reject">✗ Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+
+    <div class="email-note">
+        <span style="font-size:16px">✉</span>
+        <span>
+            Email notifications sent automatically at each stage.
+            @if (Model.LastReminderSentAt.HasValue)
+            {
+                <text>Last reminder sent @Model.LastReminderSentAt.Value.ToString("dd MMM yyyy, HH:mm").</text>
+            }
+        </span>
+    </div>
+
+</div>

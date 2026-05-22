@@ -1,0 +1,391 @@
+﻿@model List<OutsourceRequestApp.Models.OutsourceRequest>
+
+@{
+    ViewData["Title"] = "All Requests";
+    int total = Model.Count;
+    int submitted = Model.Count(r => r.Status == "Submitted");
+    int review = Model.Count(r => r.Status == "In Review" || r.Status == "SC_Reviewed" || r.Status == "Finance_Reviewed");
+    int approved = Model.Count(r => r.Status == "Approved");
+    int rejected = Model.Count(r => r.Status == "Rejected");
+}
+
+<style>
+    .index-wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 44px 28px 60px;
+    }
+
+    .index-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 32px;
+    }
+
+        .index-header h2 {
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .index-header p {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+    }
+
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px 20px;
+    }
+
+    .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+
+    .stat-val {
+        font-size: 28px;
+        font-weight: 400;
+        color: var(--text);
+        font-family: var(--mono);
+    }
+
+        .stat-val.red {
+            color: #ff4d58;
+        }
+
+        .stat-val.amber {
+            color: #fbbf24;
+        }
+
+        .stat-val.green {
+            color: #4ade80;
+        }
+
+    .toolbar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 16px;
+        align-items: center;
+    }
+
+    .search-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+
+        .search-wrap input {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+            flex: 1;
+            font-family: var(--font);
+        }
+
+    .search-ico {
+        color: var(--muted);
+        font-size: 15px;
+    }
+
+    .filter-pills {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+
+    .filter-pill {
+        padding: 5px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 12px;
+        cursor: pointer;
+        color: var(--muted);
+        transition: all 0.15s;
+        user-select: none;
+    }
+
+        .filter-pill:hover {
+            border-color: var(--border2);
+            color: var(--text);
+        }
+
+        .filter-pill.active {
+            background: rgba(227,6,19,0.1);
+            border-color: rgba(227,6,19,0.4);
+            color: #ff4d58;
+        }
+
+    .table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: #0f0f11;
+    }
+
+    th {
+        text-align: left;
+        padding: 11px 16px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--text);
+        vertical-align: middle;
+    }
+
+    tbody tr {
+        cursor: pointer;
+        transition: background 0.12s;
+    }
+
+        tbody tr:hover {
+            background: var(--surface2);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+    .mono-sm {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .part-num {
+        font-family: var(--mono);
+        font-size: 12px;
+    }
+
+    .part-desc {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+
+    .track-btn {
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+        background: transparent;
+        border: 1px solid var(--border2);
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: var(--font);
+    }
+
+        .track-btn:hover {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+
+    .empty-state {
+        padding: 60px 40px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+        .empty-state p {
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+</style>
+
+<div class="index-wrap">
+
+    <div class="index-header">
+        <div>
+            <h2>All Requests</h2>
+            <p>Sheet metal outsourcing requests across all statuses</p>
+        </div>
+        <a class="btn-primary" asp-controller="Outsource" asp-action="Create">+ New Request</a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total</div>
+            <div class="stat-val">@total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Submitted</div>
+            <div class="stat-val red">@submitted</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">In Review</div>
+            <div class="stat-val amber">@review</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Approved</div>
+            <div class="stat-val green">@approved</div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search-wrap">
+            <span class="search-ico">⌕</span>
+            <input id="searchInput" placeholder="Search by part number, ID or description…" oninput="filterTable()" />
+        </div>
+    </div>
+
+    <div class="filter-pills">
+        <div class="filter-pill active" onclick="setFilter('all', this)">All (@total)</div>
+        <div class="filter-pill" onclick="setFilter('submitted', this)">Submitted (@submitted)</div>
+        <div class="filter-pill" onclick="setFilter('review', this)">In Review (@review)</div>
+        <div class="filter-pill" onclick="setFilter('approved', this)">Approved (@approved)</div>
+        <div class="filter-pill" onclick="setFilter('rejected', this)">Rejected (@rejected)</div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="table-card">
+            <div class="empty-state">
+                <p>No outsource requests have been submitted yet.</p>
+                <a class="btn-primary" asp-controller="Outsource" asp-action="Create">Create First Request</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-card">
+            <table id="requestTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Part</th>
+                        <th>Qty</th>
+                        <th>Start</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        var badgeClass = r.Status switch
+                        {
+                            "Approved" => "badge-approved",
+                            "Rejected" => "badge-rejected",
+                            "In Review" or "SC_Reviewed"
+                            or "Finance_Reviewed" => "badge-review",
+                            _ => "badge-submitted"
+                        };
+
+                        var filterKey = r.Status switch
+                        {
+                            "Approved" => "approved",
+                            "Rejected" => "rejected",
+                            "In Review" or "SC_Reviewed"
+                            or "Finance_Reviewed" => "review",
+                            _ => "submitted"
+                        };
+
+                        <tr data-status="@filterKey"
+                            data-search="@r.RequestId @r.PartNumber @r.SapDescription"
+                            onclick="location.href='@Url.Action("Details", "Outsource", new { id = r.RequestId })'">
+
+                            <td><span class="mono-sm">#@r.RequestId.ToString("000000")</span></td>
+
+                            <td>
+                                <div class="part-num">@r.PartNumber</div>
+                                @if (!string.IsNullOrEmpty(r.SapDescription))
+                                {
+                                    <div class="part-desc">@r.SapDescription</div>
+                                }
+                            </td>
+
+                            <td>@r.Quantity</td>
+
+                            <td style="font-size:12px;">
+                                @(r.StartDate.HasValue? r.StartDate.Value.ToString("dd MMM yyyy") : "—")
+                            </td>
+
+                            <td>
+                                <span class="badge @badgeClass">@r.Status</span>
+                            </td>
+
+                            <td style="font-size:12px;color:var(--muted);">
+                                @r.CreatedAt.ToString("dd MMM yyyy")
+                            </td>
+
+                            <td>
+                                <button class="track-btn"
+                                        onclick="event.stopPropagation();location.href='@Url.Action("Details", "Outsource", new { id = r.RequestId })'">
+                                    Track
+                                </button>
+                            </td>
+
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+    <script>
+        let currentFilter = 'all';
+
+        function setFilter(filter, el) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            filterTable();
+        }
+
+        function filterTable() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('#requestTable tbody tr').forEach(row => {
+                const statusMatch = currentFilter === 'all' || row.dataset.status === currentFilter;
+                const searchMatch = !term || row.dataset.search.toLowerCase().includes(term);
+                row.style.display = statusMatch && searchMatch ? '' : 'none';
+            });
+        }
+    </script>
+}

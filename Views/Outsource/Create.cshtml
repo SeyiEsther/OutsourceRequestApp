@@ -1,0 +1,412 @@
+﻿@model OutsourceRequestApp.Models.OutsourceRequest
+
+@{
+    ViewData["Title"] = "Create Outsource Request";
+}
+
+<style>
+    body {
+        background: #0f0f10;
+        color: #e5e7eb;
+        font-family: "Segoe UI", sans-serif;
+    }
+
+    .wrap {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .card {
+        background: #151517;
+        border: 1px solid #262626;
+        border-radius: 14px;
+        padding: 28px;
+    }
+
+    h2 {
+        margin-bottom: 6px;
+        color: #ffffff;
+    }
+
+    .sub {
+        color: #9ca3af;
+        margin-bottom: 20px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #e5e7eb;
+    }
+
+    input, textarea {
+        background: #0f0f10;
+        color: #ffffff;
+        border: 1px solid #333;
+        border-radius: 6px;
+        padding: 10px;
+        transition: border 0.2s ease;
+    }
+
+        input:focus, textarea:focus {
+            border-color: #e30613;
+            outline: none;
+        }
+
+    textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .span-2 {
+        grid-column: 1 / -1;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 10px 16px;
+        background: #e30613;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+        button:hover {
+            background: #b90510;
+        }
+
+    .suggestions {
+        background: #1b1b1f;
+        border: 1px solid #333;
+        border-radius: 6px;
+        margin-top: 2px;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+        position: absolute;
+        z-index: 10;
+        width: 100%;
+    }
+
+    .suggestions li {
+        padding: 8px;
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .suggestions li:hover {
+        background: #e30613;
+    }
+
+    .preview {
+        margin-top: 30px;
+        background: #101012;
+        border: 1px solid #262626;
+        border-radius: 10px;
+        padding: 18px;
+    }
+
+    .preview h4 {
+        color: #e30613;
+    }
+
+    .preview-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+
+    .image-preview img {
+        margin-top: 10px;
+        max-width: 200px;
+        border-radius: 6px;
+        border: 1px solid #333;
+    }
+
+</style>
+
+<div class="wrap">
+
+<div class="card">
+
+<h2>Create Outsource Request</h2>
+<div class="sub">Sheet metal outsourcing request</div>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+
+@Html.AntiForgeryToken()
+
+<div class="grid">
+
+<div class="field span-2">
+<label>Created By</label>
+<input value="@User.Identity?.Name" disabled />
+</div>
+
+
+<div class="field">
+<label>Part Number *</label>
+<input id="partNumber" asp-for="PartNumber" autocomplete="off"/>
+<ul id="suggestions" class="suggestions"></ul>
+</div>
+
+<div class="field">
+<label>Quantity *</label>
+<input asp-for="Quantity" type="number" min="1"/>
+</div>
+
+
+<div class="field span-2">
+<label>SAP Description</label>
+<input id="partDescription" asp-for="SapDescription"/>
+</div>
+
+
+<div class="field">
+<label>Drawing Number</label>
+<input asp-for="DrawingNumber"/>
+</div>
+
+<div class="field">
+<label>Start Date</label>
+<input asp-for="StartDate" type="date"/>
+</div>
+
+<div class="field">
+<label>End Date</label>
+<input asp-for="EndDate" type="date"/>
+</div>
+
+
+<div class="field span-2">
+<label>Reason *</label>
+<textarea asp-for="Reason"></textarea>
+</div>
+
+
+<div class="field span-2">
+<label>Attach Image</label>
+<input type="file" id="imageUpload" name="imageUpload" accept="image/*"/>
+<div class="image-preview" id="imagePreview"></div>
+</div>
+
+</div>
+
+<button type="submit">Submit Request</button>
+
+</form>
+
+
+<div class="preview">
+
+<h4>Preview</h4>
+
+<div class="preview-row">
+<span>Part Number:</span>
+<span id="previewPart"></span>
+</div>
+
+<div class="preview-row">
+<span>Quantity:</span>
+<span id="previewQty"></span>
+</div>
+
+<div class="preview-row">
+<span>Description:</span>
+<span id="previewDesc"></span>
+</div>
+
+<div class="preview-row">
+<span>Reason:</span>
+<span id="previewReason"></span>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const form = document.querySelector("form");
+const partInput = document.getElementById("partNumber");
+const descInput = document.getElementById("partDescription");
+const suggestionBox = document.getElementById("suggestions");
+
+descInput.setAttribute("readonly","readonly");
+
+let validPartSelected = false;
+let selectingSuggestion = false;
+
+async function searchParts(term){
+
+const res = await fetch(`/Outsource/SearchPart?term=${encodeURIComponent(term)}`);
+
+return await res.json();
+
+}
+
+partInput.addEventListener("input", async () => {
+
+validPartSelected=false;
+descInput.value="";
+
+const term=partInput.value.trim();
+
+if(term.length<2){
+suggestionBox.style.display="none";
+return;
+}
+
+const data = await searchParts(term);
+
+suggestionBox.innerHTML="";
+
+data.forEach(p=>{
+
+const li=document.createElement("li");
+
+li.textContent=`${p.partNumber} — ${p.description}`;
+
+li.addEventListener("mousedown",(e)=>{
+
+e.preventDefault();
+
+selectingSuggestion=true;
+
+partInput.value=p.partNumber;
+
+descInput.value=p.description;
+
+validPartSelected=true;
+
+suggestionBox.style.display="none";
+
+setTimeout(()=> selectingSuggestion=false,0);
+
+});
+
+suggestionBox.appendChild(li);
+
+});
+
+suggestionBox.style.display="block";
+
+});
+
+
+document.addEventListener("click",(e)=>{
+
+if(!suggestionBox.contains(e.target) && e.target!==partInput)
+
+suggestionBox.style.display="none";
+
+});
+
+
+partInput.addEventListener("blur", async()=>{
+
+if(selectingSuggestion) return;
+
+if(validPartSelected) return;
+
+const value=partInput.value.trim();
+
+const data = await searchParts(value);
+
+const match=data.find(p=>p.partNumber.toLowerCase()===value.toLowerCase());
+
+if(match){
+
+descInput.value=match.description;
+
+validPartSelected=true;
+
+}else{
+
+descInput.value="❌ Part not found in SAP";
+
+descInput.style.color="red";
+
+validPartSelected=false;
+
+}
+
+});
+
+
+form.addEventListener("submit",(e)=>{
+
+if(!validPartSelected){
+
+e.preventDefault();
+
+alert("Please select a valid SAP part number.");
+
+}
+
+});
+
+
+document.getElementById("imageUpload").addEventListener("change", function(){
+
+const preview = document.getElementById("imagePreview");
+
+preview.innerHTML="";
+
+const file=this.files[0];
+
+if(file){
+
+const reader=new FileReader();
+
+reader.onload=function(e){
+
+const img=document.createElement("img");
+
+img.src=e.target.result;
+
+preview.appendChild(img);
+
+};
+
+reader.readAsDataURL(file);
+
+}
+
+});
+
+
+document.querySelector("[name='PartNumber']").addEventListener("input",e=>{
+document.getElementById("previewPart").innerText=e.target.value;
+});
+
+document.querySelector("[name='Quantity']").addEventListener("input",e=>{
+document.getElementById("previewQty").innerText=e.target.value;
+});
+
+document.querySelector("[name='SapDescription']").addEventListener("input",e=>{
+document.getElementById("previewDesc").innerText=e.target.value;
+});
+
+document.querySelector("[name='Reason']").addEventListener("input",e=>{
+document.getElementById("previewReason").innerText=e.target.value;
+});
+
+</script>
