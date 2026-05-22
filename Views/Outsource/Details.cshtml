@@ -1,331 +1,488 @@
-﻿@model OutsourceRequestApp.Models.OutsourceRequest
+@model OutsourceRequestApp.Models.OutsourceRequest
+@using OutsourceRequestApp.Models
 
 @{
-    ViewData["Title"] = "New Request";
+    ViewData["Title"] = $"OSR-{Model.RequestId:000000}";
+
+    var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
+    var sc      = roles.FirstOrDefault(r => r.RoleKey == "SC");
+    var finance = roles.FirstOrDefault(r => r.RoleKey == "Finance");
+    var md      = roles.FirstOrDefault(r => r.RoleKey == "MD");
+
+    string badgeClass = Model.Status switch
+    {
+        "Approved"                        => "badge-approved",
+        "Rejected"                        => "badge-rejected",
+        "Finance_Pending" or "MD_Pending" => "badge-review",
+        _                                 => "badge-submitted"
+    };
+
+    string statusLabel = Model.Status switch
+    {
+        "Finance_Pending" => "Finance Review",
+        "MD_Pending"      => "MD Review",
+        _                 => Model.Status
+    };
 }
 
 <style>
-    .form-wrap {
+    .detail-wrap {
         max-width: 860px;
         margin: 0 auto;
         padding: 44px 28px 60px;
     }
 
-    .form-header {
-        margin-bottom: 32px;
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 36px;
+        gap: 16px;
     }
 
-        .form-header h2 {
-            font-size: 22px;
-            font-weight: 500;
-            margin-bottom: 6px;
-        }
-
-        .form-header p {
-            font-size: 13px;
-            color: var(--muted);
-            line-height: 1.6;
-        }
-
-    .part-wrap {
-        position: relative;
-    }
-
-    .suggestions {
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        right: 0;
-        background: var(--surface2);
-        border: 1px solid var(--border2);
-        border-radius: 8px;
-        z-index: 50;
-        overflow: hidden;
-        display: none;
-        max-height: 220px;
-        overflow-y: auto;
-    }
-
-        .suggestions li {
-            list-style: none;
-            padding: 9px 12px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            font-size: 13px;
-            transition: background 0.12s;
-        }
-
-            .suggestions li:hover {
-                background: rgba(227, 6, 19, 0.1);
-            }
-
-    .sug-num {
+    .detail-id {
         font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 5px;
+    }
+
+    .detail-title {
+        font-size: 22px;
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    .detail-meta {
         font-size: 12px;
-        color: var(--text);
+        color: var(--muted);
+    }
+
+    .detail-actions {
+        display: flex;
+        gap: 10px;
         flex-shrink: 0;
     }
 
-    .sug-desc {
-        font-size: 12px;
-        color: var(--muted);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
     }
 
-    .char-count {
-        font-size: 11px;
+    .info-row {
+        display: contents;
+    }
+
+    .info-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
         color: var(--muted);
-        text-align: right;
+        font-weight: 500;
+        padding: 10px 0 10px 0;
+        border-bottom: 1px solid var(--border);
+        padding-right: 20px;
+    }
+
+    .info-val {
+        font-size: 13px;
+        color: var(--text);
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .info-val.mono {
+        font-family: var(--mono);
+        font-size: 12px;
+    }
+
+    .reason-block {
+        background: var(--surface2);
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 13px;
+        line-height: 1.7;
+        color: var(--text);
+    }
+
+    .stage-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 999px;
+    }
+
+    .chip-done {
+        background: rgba(34,197,94,.1);
+        color: #4ade80;
+        border: 1px solid rgba(34,197,94,.25);
+    }
+
+    .chip-pending {
+        background: rgba(245,158,11,.1);
+        color: #fbbf24;
+        border: 1px solid rgba(245,158,11,.25);
+    }
+
+    .chip-waiting {
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border);
+    }
+
+    .chip-rejected {
+        background: rgba(239,68,68,.1);
+        color: #f87171;
+        border: 1px solid rgba(239,68,68,.25);
+    }
+
+    .approval-stage {
+        display: flex;
+        gap: 14px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+        .approval-stage:last-child {
+            border-bottom: none;
+        }
+
+    .as-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .asi-done    { background: rgba(34,197,94,.1);  color: #4ade80; }
+    .asi-pending { background: rgba(227,6,19,.1);   color: var(--red); }
+    .asi-wait    { background: var(--surface2);     color: var(--muted); }
+    .asi-rej     { background: rgba(239,68,68,.1);  color: #f87171; }
+
+    .as-body { flex: 1; }
+
+    .as-role {
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 2px;
+    }
+
+    .as-name {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .as-comment {
+        font-size: 12px;
+        color: var(--muted);
+        font-style: italic;
         margin-top: 4px;
     }
 
-    .submit-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 28px;
-    }
-
-    .validation-summary {
-        background: rgba(239,68,68,0.08);
-        border: 1px solid rgba(239,68,68,0.25);
-        border-radius: 8px;
-        padding: 14px 16px;
-        margin-bottom: 20px;
-        font-size: 13px;
-        color: #f87171;
-    }
-
-        .validation-summary ul {
-            margin-left: 16px;
-            margin-top: 6px;
-        }
-
-        .validation-summary li {
-            margin-bottom: 3px;
-        }
-
-    .field-error {
+    .as-time {
         font-size: 11px;
-        color: #f87171;
+        color: var(--muted);
+        font-family: var(--mono);
         margin-top: 3px;
     }
 
-    .field input.input-error,
-    .field textarea.input-error {
-        border-color: rgba(239,68,68,0.5);
+    .cost-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
     }
+
+        .cost-row:last-child { border-bottom: none; }
+
+    .cost-label { color: var(--muted); font-size: 12px; }
+    .cost-val   { font-family: var(--mono); font-size: 13px; }
+
+    .attachment-thumb {
+        max-width: 260px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        margin-top: 8px;
+    }
+
+    .attachment-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--red);
+        text-decoration: none;
+        margin-top: 8px;
+    }
+
+        .attachment-link:hover { text-decoration: underline; }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        margin-bottom: 24px;
+        transition: color .15s;
+    }
+
+        .back-link:hover { color: var(--text); }
 </style>
 
-<div class="form-wrap">
+<div class="detail-wrap">
 
-    <div class="form-header">
-        <h2>New Outsource Request</h2>
-        <p>Section 1 — Work Preparation. Supply Chain &amp; Finance complete Section 2 after submission.</p>
+    <a class="back-link" asp-controller="Outsource" asp-action="Index">← All requests</a>
+
+    <div class="detail-header">
+        <div>
+            <div class="detail-id">OSR-@Model.RequestId.ToString("000000")</div>
+            <div class="detail-title">@(Model.SapDescription ?? Model.PartNumber)</div>
+            <div class="detail-meta">
+                Submitted @Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")
+                by @Model.CreatedByUsername
+            </div>
+        </div>
+        <div class="detail-actions">
+            <span class="badge @badgeClass">@statusLabel</span>
+            <a class="btn-primary"
+               asp-controller="Outsource"
+               asp-action="Track"
+               asp-route-id="@Model.RequestId">
+                Track →
+            </a>
+        </div>
     </div>
 
-    @if (!ViewData.ModelState.IsValid)
+    <!-- SECTION 1: Request details -->
+    <div class="section-label">Request details</div>
+    <div class="form-card">
+        <div class="info-grid">
+            <div class="info-label">Part number</div>
+            <div class="info-val mono">@Model.PartNumber</div>
+
+            <div class="info-label">SAP description</div>
+            <div class="info-val">@(Model.SapDescription ?? "—")</div>
+
+            <div class="info-label">Drawing number</div>
+            <div class="info-val mono">@(Model.DrawingNumber ?? "—")</div>
+
+            <div class="info-label">Quantity</div>
+            <div class="info-val mono">@Model.Quantity</div>
+
+            <div class="info-label">Start date</div>
+            <div class="info-val">@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("dd MMM yyyy") : "—")</div>
+
+            <div class="info-label">End date</div>
+            <div class="info-val">@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("dd MMM yyyy") : "—")</div>
+        </div>
+
+        <div style="margin-top:14px;">
+            <div class="info-label" style="margin-bottom:8px;">Reason for outsourcing</div>
+            <div class="reason-block">@Model.Reason</div>
+        </div>
+    </div>
+
+    <!-- ATTACHMENT -->
+    @if (!string.IsNullOrEmpty(Model.AttachmentPath))
     {
-        <div class="validation-summary">
-            <strong>Please fix the following errors:</strong>
-            <ul>
-                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                {
-                    <li>@error.ErrorMessage</li>
-                }
-            </ul>
+        <div class="section-label">Attachment</div>
+        <div class="form-card">
+            @{
+                var isPdf = Model.AttachmentPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+            }
+            @if (isPdf)
+            {
+                <a class="attachment-link" href="/@Model.AttachmentPath" target="_blank">
+                    📄 View PDF attachment
+                </a>
+            }
+            else
+            {
+                <img class="attachment-thumb"
+                     src="/@Model.AttachmentPath"
+                     alt="Attached document" />
+                <br />
+                <a class="attachment-link" href="/@Model.AttachmentPath" target="_blank">
+                    Open full size →
+                </a>
+            }
         </div>
     }
 
-    <form asp-action="Create" method="post" enctype="multipart/form-data">
-        @Html.AntiForgeryToken()
-
-        <div class="section-label">Part details</div>
+    <!-- SECTION 2: Supply Chain cost analysis (if filled) -->
+    @if (Model.CostInhousePerMonth.HasValue || Model.CostOutsourcePerMonth.HasValue || Model.PpapRequired.HasValue)
+    {
+        <div class="section-label">Supply Chain — cost analysis</div>
         <div class="form-card">
-            <div class="form-grid">
-
-                <div class="field">
-                    <label>Created by</label>
-                    <input value="@User.Identity?.Name" disabled />
-                </div>
-
-                <div class="field">
-                    <label>Drawing number</label>
-                    <input asp-for="DrawingNumber" placeholder="e.g. DRW-00412" />
-                </div>
-
-                <div class="field">
-                    <label>Part number *</label>
-                    <div class="part-wrap">
-                        <input id="partNumber"
-                               asp-for="PartNumber"
-                               placeholder="Search SAP part number…"
-                               autocomplete="off" />
-                        <ul id="suggestions" class="suggestions"></ul>
-                    </div>
-                    <span asp-validation-for="PartNumber" class="field-error"></span>
-                </div>
-
-                <div class="field">
-                    <label>SAP description</label>
-                    <input id="partDescription"
-                           asp-for="SapDescription"
-                           placeholder="Auto-filled from SAP"
-                           readonly />
-                </div>
-
-                <div class="field">
-                    <label>Quantity *</label>
-                    <input asp-for="Quantity" type="number" min="1" placeholder="0" />
-                    <span asp-validation-for="Quantity" class="field-error"></span>
-                </div>
-
-                <div class="field">
-                    <label>Start date</label>
-                    <input asp-for="StartDate" type="date" />
-                </div>
-
-                <div class="field">
-                    <label>End date</label>
-                    <input asp-for="EndDate" type="date" />
-                </div>
-
+            <div class="cost-row">
+                <span class="cost-label">PPAP required?</span>
+                <span class="cost-val">@(Model.PpapRequired.HasValue ? (Model.PpapRequired.Value ? "Yes" : "No") : "—")</span>
             </div>
-        </div>
-
-        <div class="section-label">Reason for request</div>
-        <div class="form-card">
-            <div class="field">
-                <label>Why can't this be produced in-house? *</label>
-                <textarea id="reasonText"
-                          asp-for="Reason"
-                          placeholder="Include capacity constraints, machine availability, skill gaps, or any other relevant details…"
-                          maxlength="1000"></textarea>
-                <div class="char-count"><span id="charCount">0</span> / 1000</div>
-                <span asp-validation-for="Reason" class="field-error"></span>
+            <div class="cost-row">
+                <span class="cost-label">In-house cost / month</span>
+                <span class="cost-val">@(Model.CostInhousePerMonth.HasValue ? $"£{Model.CostInhousePerMonth.Value:N2}" : "—")</span>
             </div>
-        </div>
-
-        <div class="section-label">Attachments</div>
-        <div class="form-card">
-            <div class="field">
-                <label>Supporting image or document (optional)</label>
-                <input type="file" name="imageUpload" accept="image/*,.pdf" />
+            <div class="cost-row">
+                <span class="cost-label">Outsource cost / month</span>
+                <span class="cost-val">@(Model.CostOutsourcePerMonth.HasValue ? $"£{Model.CostOutsourcePerMonth.Value:N2}" : "—")</span>
             </div>
-            <div id="imagePreview" style="margin-top:12px;"></div>
+            @if (!string.IsNullOrEmpty(Model.CostComments))
+            {
+                <div class="cost-row">
+                    <span class="cost-label">Cost notes</span>
+                    <span style="font-size:13px;">@Model.CostComments</span>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- APPROVAL HISTORY -->
+    <div class="section-label">Approval history</div>
+    <div class="form-card">
+
+        <!-- Submitted -->
+        <div class="approval-stage">
+            <div class="as-icon asi-done">✓</div>
+            <div class="as-body">
+                <div class="as-role">Work Preparation — submitted</div>
+                <div class="as-name">@Model.CreatedByUsername</div>
+                <div class="as-time">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
+            </div>
+            <span class="stage-chip chip-done">Submitted</span>
         </div>
 
-        <div class="submit-row">
-            <a class="btn-ghost" asp-controller="Home" asp-action="Index">Cancel</a>
-            <button type="submit" class="btn-primary">Submit Request →</button>
-        </div>
-
-    </form>
-</div>
-
-@section Scripts {
-    <script>
-        const partInput  = document.getElementById('partNumber');
-        const descInput  = document.getElementById('partDescription');
-        const suggBox    = document.getElementById('suggestions');
-        const reasonTA   = document.getElementById('reasonText');
-        const charCount  = document.getElementById('charCount');
-
-        let validPartSelected = false;
-        let selectingSuggestion = false;
-
-        // Character counter
-        reasonTA.addEventListener('input', () => {
-            charCount.textContent = reasonTA.value.length;
-        });
-
-        // SAP lookup
-        async function searchParts(term) {
-            const res = await fetch(`/Outsource/SearchPart?term=${encodeURIComponent(term)}`);
-            return await res.json();
+        <!-- Supply Chain -->
+        @{
+            bool scDone     = Model.ScReviewedAt.HasValue;
+            bool scPending  = Model.Status == "Submitted";
+            bool scRejected = !scDone && Model.Status == "Rejected";
         }
+        <div class="approval-stage">
+            <div class="as-icon @(scDone ? "asi-done" : scPending ? "asi-pending" : "asi-wait")">
+                @(scDone ? "✓" : scPending ? "→" : "—")
+            </div>
+            <div class="as-body">
+                <div class="as-role">
+                    Supply Chain Review
+                    @if (sc != null && (scDone || scPending))
+                    {
+                        <span style="font-weight:400;color:var(--muted);"> — @sc.FullName</span>
+                    }
+                </div>
+                <div class="as-name">
+                    @if (scDone) { <text>Reviewed by @Model.ScReviewedBy</text> }
+                    else if (scPending) { <text>Awaiting review</text> }
+                    else { <text>Not yet reached</text> }
+                </div>
+                @if (scDone)
+                {
+                    <div class="as-time">@Model.ScReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
+                    @if (!string.IsNullOrEmpty(Model.ScComments))
+                    {
+                        <div class="as-comment">"@Model.ScComments"</div>
+                    }
+                }
+            </div>
+            <span class="stage-chip @(scDone ? "chip-done" : scPending ? "chip-pending" : scRejected ? "chip-rejected" : "chip-waiting")">
+                @(scDone ? "Approved" : scPending ? "Pending" : scRejected ? "Rejected" : "Waiting")
+            </span>
+        </div>
 
-        partInput.addEventListener('input', async () => {
-            validPartSelected = false;
-            descInput.value = '';
+        <!-- Finance -->
+        @{
+            bool finDone    = Model.FinanceReviewedAt.HasValue;
+            bool finPending = Model.Status == "Finance_Pending";
+        }
+        <div class="approval-stage">
+            <div class="as-icon @(finDone ? "asi-done" : finPending ? "asi-pending" : "asi-wait")">
+                @(finDone ? "✓" : finPending ? "→" : "—")
+            </div>
+            <div class="as-body">
+                <div class="as-role">
+                    Finance Director sign-off
+                    @if (finance != null && (finDone || finPending))
+                    {
+                        <span style="font-weight:400;color:var(--muted);"> — @finance.FullName</span>
+                    }
+                </div>
+                <div class="as-name">
+                    @if (finDone) { <text>Reviewed by @Model.FinanceReviewedBy</text> }
+                    else if (finPending) { <text>Awaiting sign-off</text> }
+                    else { <text>Not yet reached</text> }
+                </div>
+                @if (finDone)
+                {
+                    <div class="as-time">@Model.FinanceReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
+                    @if (!string.IsNullOrEmpty(Model.FinanceComments))
+                    {
+                        <div class="as-comment">"@Model.FinanceComments"</div>
+                    }
+                }
+            </div>
+            <span class="stage-chip @(finDone ? "chip-done" : finPending ? "chip-pending" : "chip-waiting")">
+                @(finDone ? "Approved" : finPending ? "Pending" : "Waiting")
+            </span>
+        </div>
 
-            const term = partInput.value.trim();
-            if (term.length < 2) { suggBox.style.display = 'none'; return; }
+        <!-- Managing Director -->
+        @{
+            bool mdDone    = Model.MdReviewedAt.HasValue;
+            bool mdPending = Model.Status == "MD_Pending";
+        }
+        <div class="approval-stage">
+            <div class="as-icon @(mdDone && Model.Status == "Approved" ? "asi-done" : mdDone && Model.Status == "Rejected" ? "asi-rej" : mdPending ? "asi-pending" : "asi-wait")">
+                @(mdDone && Model.Status == "Approved" ? "✓" : mdDone && Model.Status == "Rejected" ? "✗" : mdPending ? "→" : "—")
+            </div>
+            <div class="as-body">
+                <div class="as-role">
+                    Managing Director approval
+                    @if (md != null && (mdDone || mdPending))
+                    {
+                        <span style="font-weight:400;color:var(--muted);"> — @md.FullName</span>
+                    }
+                </div>
+                <div class="as-name">
+                    @if (mdDone && Model.Status == "Approved")      { <text>Approved by @Model.MdReviewedBy — outsourcing authorised</text> }
+                    else if (mdDone && Model.Status == "Rejected")   { <text>Rejected by @Model.MdReviewedBy</text> }
+                    else if (mdPending)                              { <text>Awaiting final decision</text> }
+                    else                                             { <text>Not yet reached</text> }
+                </div>
+                @if (mdDone)
+                {
+                    <div class="as-time">@Model.MdReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
+                    @if (!string.IsNullOrEmpty(Model.MdComments))
+                    {
+                        <div class="as-comment">"@Model.MdComments"</div>
+                    }
+                }
+            </div>
+            <span class="stage-chip @(mdDone && Model.Status == "Approved" ? "chip-done" : mdDone && Model.Status == "Rejected" ? "chip-rejected" : mdPending ? "chip-pending" : "chip-waiting")">
+                @(mdDone && Model.Status == "Approved" ? "Approved" : mdDone && Model.Status == "Rejected" ? "Rejected" : mdPending ? "Pending" : "Waiting")
+            </span>
+        </div>
 
-            const data = await searchParts(term);
-            suggBox.innerHTML = '';
+    </div>
 
-            data.forEach(p => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span class="sug-num">${p.partNumber}</span><span class="sug-desc">${p.description}</span>`;
+    <div style="margin-top:24px;display:flex;gap:10px;">
+        <a class="btn-ghost" asp-controller="Outsource" asp-action="Index">← All requests</a>
+        <a class="btn-primary"
+           asp-controller="Outsource"
+           asp-action="Track"
+           asp-route-id="@Model.RequestId">
+            Open tracker →
+        </a>
+    </div>
 
-                li.addEventListener('mousedown', e => {
-                    e.preventDefault();
-                    selectingSuggestion = true;
-                    partInput.value  = p.partNumber;
-                    descInput.value  = p.description;
-                    validPartSelected = true;
-                    suggBox.style.display = 'none';
-                    setTimeout(() => selectingSuggestion = false, 0);
-                });
-
-                suggBox.appendChild(li);
-            });
-
-            suggBox.style.display = data.length ? 'block' : 'none';
-        });
-
-        partInput.addEventListener('blur', async () => {
-            if (selectingSuggestion || validPartSelected) return;
-
-            const value = partInput.value.trim();
-            if (!value) return;
-
-            const data = await searchParts(value);
-            const match = data.find(p => p.partNumber.toLowerCase() === value.toLowerCase());
-
-            if (match) {
-                descInput.value  = match.description;
-                descInput.style.color = '';
-                validPartSelected = true;
-            } else {
-                descInput.value  = 'Part not found in SAP';
-                descInput.style.color = '#f87171';
-                validPartSelected = false;
-            }
-        });
-
-        document.addEventListener('click', e => {
-            if (!e.target.closest('.part-wrap')) suggBox.style.display = 'none';
-        });
-
-        document.querySelector('form').addEventListener('submit', e => {
-            if (!validPartSelected) {
-                e.preventDefault();
-                alert('Please select a valid SAP part number before submitting.');
-            }
-        });
-
-        // Image preview
-        document.querySelector('input[name="imageUpload"]').addEventListener('change', function () {
-            const preview = document.getElementById('imagePreview');
-            preview.innerHTML = '';
-            const file = this.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.cssText = 'max-width:220px;border-radius:8px;border:1px solid var(--border);margin-top:8px;';
-                    preview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    </script>
-}
+</div>

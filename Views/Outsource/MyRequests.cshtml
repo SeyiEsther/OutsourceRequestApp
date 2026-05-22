@@ -1,0 +1,246 @@
+@model List<OutsourceRequestApp.Models.OutsourceRequest>
+
+@{
+    ViewData["Title"] = "My Requests";
+    int total    = Model.Count;
+    int pending  = Model.Count(r => r.Status is "Submitted" or "Finance_Pending" or "MD_Pending");
+    int approved = Model.Count(r => r.Status == "Approved");
+    int rejected = Model.Count(r => r.Status == "Rejected");
+}
+
+<style>
+    .my-wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 44px 28px 60px;
+    }
+
+    .my-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 32px;
+    }
+
+        .my-header h2 {
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .my-header p {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+    }
+
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px 20px;
+    }
+
+    .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+
+    .stat-val {
+        font-size: 28px;
+        font-weight: 400;
+        color: var(--text);
+        font-family: var(--mono);
+    }
+
+        .stat-val.green  { color: #4ade80; }
+        .stat-val.amber  { color: #fbbf24; }
+        .stat-val.red-t  { color: #f87171; }
+
+    .table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead { background: #0f0f11; }
+
+    th {
+        text-align: left;
+        padding: 11px 16px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--text);
+        vertical-align: middle;
+    }
+
+    tbody tr {
+        cursor: pointer;
+        transition: background 0.12s;
+    }
+
+        tbody tr:hover { background: var(--surface2); }
+        tbody tr:last-child td { border-bottom: none; }
+
+    .mono-sm {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .part-num  { font-family: var(--mono); font-size: 12px; }
+    .part-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .track-btn {
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+        background: transparent;
+        border: 1px solid var(--border2);
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: var(--font);
+    }
+
+        .track-btn:hover {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+
+    .empty-state {
+        padding: 60px 40px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+        .empty-state p { margin-bottom: 20px; font-size: 14px; }
+</style>
+
+<div class="my-wrap">
+
+    <div class="my-header">
+        <div>
+            <h2>My Requests</h2>
+            <p>Outsource requests submitted by you</p>
+        </div>
+        <a class="btn-primary" asp-controller="Outsource" asp-action="Create">+ New Request</a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total</div>
+            <div class="stat-val">@total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">In Progress</div>
+            <div class="stat-val amber">@pending</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Approved</div>
+            <div class="stat-val green">@approved</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Rejected</div>
+            <div class="stat-val red-t">@rejected</div>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="table-card">
+            <div class="empty-state">
+                <p>You haven't submitted any outsource requests yet.</p>
+                <a class="btn-primary" asp-controller="Outsource" asp-action="Create">Create First Request</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Part</th>
+                        <th>Qty</th>
+                        <th>Start</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        var badgeClass = r.Status switch
+                        {
+                            "Approved"                        => "badge-approved",
+                            "Rejected"                        => "badge-rejected",
+                            "Finance_Pending" or "MD_Pending" => "badge-review",
+                            _                                 => "badge-submitted"
+                        };
+                        var statusLabel = r.Status switch
+                        {
+                            "Finance_Pending" => "Finance Review",
+                            "MD_Pending"      => "MD Review",
+                            _                 => r.Status
+                        };
+
+                        <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
+                            <td><span class="mono-sm">#@r.RequestId.ToString("000000")</span></td>
+                            <td>
+                                <div class="part-num">@r.PartNumber</div>
+                                @if (!string.IsNullOrEmpty(r.SapDescription))
+                                {
+                                    <div class="part-desc">@r.SapDescription</div>
+                                }
+                            </td>
+                            <td>@r.Quantity</td>
+                            <td style="font-size:12px;">
+                                @(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yyyy") : "—")
+                            </td>
+                            <td><span class="badge @badgeClass">@statusLabel</span></td>
+                            <td style="font-size:12px;color:var(--muted);">
+                                @r.CreatedAt.ToString("dd MMM yyyy")
+                            </td>
+                            <td>
+                                <button class="track-btn"
+                                        onclick="event.stopPropagation();location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
+                                    Track
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</div>

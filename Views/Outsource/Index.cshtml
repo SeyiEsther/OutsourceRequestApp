@@ -4,9 +4,9 @@
     ViewData["Title"] = "All Requests";
     int total = Model.Count;
     int submitted = Model.Count(r => r.Status == "Submitted");
-    int review = Model.Count(r => r.Status == "In Review" || r.Status == "SC_Reviewed" || r.Status == "Finance_Reviewed");
-    int approved = Model.Count(r => r.Status == "Approved");
-    int rejected = Model.Count(r => r.Status == "Rejected");
+    int review    = Model.Count(r => r.Status == "Finance_Pending" || r.Status == "MD_Pending");
+    int approved  = Model.Count(r => r.Status == "Approved");
+    int rejected  = Model.Count(r => r.Status == "Rejected");
 }
 
 <style>
@@ -308,25 +308,31 @@
                     {
                         var badgeClass = r.Status switch
                         {
-                            "Approved" => "badge-approved",
-                            "Rejected" => "badge-rejected",
-                            "In Review" or "SC_Reviewed"
-                            or "Finance_Reviewed" => "badge-review",
-                            _ => "badge-submitted"
+                            "Approved"                        => "badge-approved",
+                            "Rejected"                        => "badge-rejected",
+                            "Finance_Pending" or "MD_Pending" => "badge-review",
+                            _                                 => "badge-submitted"
                         };
 
                         var filterKey = r.Status switch
                         {
-                            "Approved" => "approved",
-                            "Rejected" => "rejected",
-                            "In Review" or "SC_Reviewed"
-                            or "Finance_Reviewed" => "review",
-                            _ => "submitted"
+                            "Approved"                        => "approved",
+                            "Rejected"                        => "rejected",
+                            "Finance_Pending" or "MD_Pending" => "review",
+                            _                                 => "submitted"
+                        };
+
+                        // Show a friendlier label for internal status codes
+                        var statusLabel = r.Status switch
+                        {
+                            "Finance_Pending" => "Finance Review",
+                            "MD_Pending"      => "MD Review",
+                            _                 => r.Status
                         };
 
                         <tr data-status="@filterKey"
                             data-search="@r.RequestId @r.PartNumber @r.SapDescription"
-                            onclick="location.href='@Url.Action("Details", "Outsource", new { id = r.RequestId })'">
+                            onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
 
                             <td><span class="mono-sm">#@r.RequestId.ToString("000000")</span></td>
 
@@ -345,7 +351,7 @@
                             </td>
 
                             <td>
-                                <span class="badge @badgeClass">@r.Status</span>
+                                <span class="badge @badgeClass">@statusLabel</span>
                             </td>
 
                             <td style="font-size:12px;color:var(--muted);">
@@ -354,7 +360,7 @@
 
                             <td>
                                 <button class="track-btn"
-                                        onclick="event.stopPropagation();location.href='@Url.Action("Details", "Outsource", new { id = r.RequestId })'">
+                                        onclick="event.stopPropagation();location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
                                     Track
                                 </button>
                             </td>
