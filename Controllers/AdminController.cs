@@ -1,7 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
 using OutsourceRequestApp.Services;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace OutsourceRequestApp.Controllers
 {
@@ -12,52 +16,65 @@ namespace OutsourceRequestApp.Controllers
 
         public AdminController(AppDbContext db, EmailService email)
         {
-            _db = db;
+            _db    = db;
             _email = email;
         }
 
-        // Check if current user is an admin
-        private bool IsAdmin()
+        // ----------------------------------------------------------------
+        // Auth helper
+        // ----------------------------------------------------------------
+
+        private async Task<bool> IsAdminAsync()
         {
-            var admins = _db.AppSettings
-                .FirstOrDefault(s => s.SettingKey == "AdminUsers")?.SettingValue ?? "";
+            var setting = await _db.AppSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");
+            var admins      = setting?.SettingValue ?? "";
             var currentUser = User.Identity?.Name ?? "";
+
             return admins.Split(',', StringSplitOptions.RemoveEmptyEntries)
                          .Any(a => a.Trim().Equals(currentUser, StringComparison.OrdinalIgnoreCase));
         }
 
+        // ----------------------------------------------------------------
         // GET: /Admin
-        public IActionResult Index()
+        // ----------------------------------------------------------------
+        public async Task<IActionResult> Index()
         {
-            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
+            if (!await IsAdminAsync())
+                return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
-            var roles = _db.ApproverRoles.ToList();
-            var settings = _db.AppSettings.ToList();
+            var roles    = await _db.ApproverRoles.ToListAsync();
+            var settings = await _db.AppSettings.ToListAsync();
 
-            ViewBag.Roles = roles;
+            ViewBag.Roles    = roles;
             ViewBag.Settings = settings;
 
             string Get(string key, string fallback = "") =>
                 settings.FirstOrDefault(s => s.SettingKey == key)?.SettingValue ?? fallback;
 
-            ViewBag.SmtpHost = Get("SmtpHost");
-            ViewBag.SmtpPort = Get("SmtpPort", "25");
-            ViewBag.SmtpFrom = Get("SmtpFrom");
-            ViewBag.SmtpFromName = Get("SmtpFromName", "Outsource Portal");
-            ViewBag.EmailDomain = Get("CompanyEmailDomain");
+            ViewBag.SmtpHost      = Get("SmtpHost");
+            ViewBag.SmtpPort      = Get("SmtpPort", "25");
+            ViewBag.SmtpFrom      = Get("SmtpFrom");
+            ViewBag.SmtpFromName  = Get("SmtpFromName", "Outsource Portal");
+            ViewBag.EmailDomain   = Get("CompanyEmailDomain");
             ViewBag.ReminderHours = Get("ReminderHours", "24");
-            ViewBag.AdminUsers = Get("AdminUsers");
+            ViewBag.AdminUsers    = Get("AdminUsers");
 
             return View();
         }
 
+        // ----------------------------------------------------------------
         // POST: /Admin/SaveRole
+        // ----------------------------------------------------------------
         [HttpPost]
-        public IActionResult SaveRole(string roleKey, string roleDisplayName, string username, string fullName, string email)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveRole(string roleKey, string roleDisplayName,
+                                                   string username, string fullName, string email)
         {
-            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
+            if (!await IsAdminAsync())
+                return StatusCode(403, "Access denied.");
 
-            var role = _db.ApproverRoles.FirstOrDefault(r => r.RoleKey == roleKey);
+            var role = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == roleKey);
             if (role == null)
             {
                 role = new ApproverRole { RoleKey = roleKey };
@@ -65,112 +82,132 @@ namespace OutsourceRequestApp.Controllers
             }
 
             role.RoleDisplayName = roleDisplayName;
-            role.Username = username;
-            role.FullName = fullName;
-            role.Email = email;
+            role.Username        = username;
+            role.FullName        = fullName;
+            role.Email           = email;
 
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
             TempData["Success"] = $"{roleDisplayName} approver saved.";
             return RedirectToAction(nameof(Index));
         }
 
+        // ----------------------------------------------------------------
         // POST: /Admin/SaveSettings
+        // ----------------------------------------------------------------
         [HttpPost]
-        public IActionResult SaveSettings(string smtpHost, string smtpPort, string smtpFrom,
-                                          string smtpFromName, string emailDomain, string reminderHours)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveSettings(string smtpHost, string smtpPort,
+                                                       string smtpFrom, string smtpFromName,
+                                                       string emailDomain, string reminderHours)
         {
-            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
+            if (!await IsAdminAsync())
+                return StatusCode(403, "Access denied.");
 
-            void Set(string key, string value)
+            async Task Set(string key, string value)
             {
-                var s = _db.AppSettings.FirstOrDefault(x => x.SettingKey == key);
+                var s = await _db.AppSettings.FirstOrDefaultAsync(x => x.SettingKey == key);
                 if (s == null) { s = new AppSetting { SettingKey = key }; _db.AppSettings.Add(s); }
                 s.SettingValue = value ?? "";
             }
 
-            Set("SmtpHost", smtpHost);
-            Set("SmtpPort", smtpPort);
-            Set("SmtpFrom", smtpFrom);
-            Set("SmtpFromName", smtpFromName);
-            Set("CompanyEmailDomain", emailDomain);
-            Set("ReminderHours", reminderHours);
+            await Set("SmtpHost",           smtpHost);
+            await Set("SmtpPort",           smtpPort);
+            await Set("SmtpFrom",           smtpFrom);
+            await Set("SmtpFromName",       smtpFromName);
+            await Set("CompanyEmailDomain", emailDomain);
+            await Set("ReminderHours",      reminderHours);
 
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
             TempData["Success"] = "Email settings saved.";
             return RedirectToAction(nameof(Index));
         }
 
+        // ----------------------------------------------------------------
         // POST: /Admin/SaveAdmins
+        // ----------------------------------------------------------------
         [HttpPost]
-        public IActionResult SaveAdmins(string adminUsers)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveAdmins(string adminUsers)
         {
-            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
+            if (!await IsAdminAsync())
+                return StatusCode(403, "Access denied.");
 
-            var s = _db.AppSettings.FirstOrDefault(x => x.SettingKey == "AdminUsers");
+            var s = await _db.AppSettings.FirstOrDefaultAsync(x => x.SettingKey == "AdminUsers");
             if (s == null) { s = new AppSetting { SettingKey = "AdminUsers" }; _db.AppSettings.Add(s); }
             s.SettingValue = adminUsers ?? "";
 
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
             TempData["Success"] = "Admin users saved.";
             return RedirectToAction(nameof(Index));
         }
 
+        // ----------------------------------------------------------------
         // POST: /Admin/TestEmail
+        // ----------------------------------------------------------------
         [HttpPost]
-        public IActionResult TestEmail()
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TestEmail()
         {
-            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
+            if (!await IsAdminAsync())
+                return StatusCode(403, "Access denied.");
 
-            // Send a test email to yourself
             var currentUser = User.Identity?.Name ?? "";
-            var emailDomain = _db.AppSettings.FirstOrDefault(s => s.SettingKey == "CompanyEmailDomain")?.SettingValue ?? "company.com";
-            var usernameOnly = currentUser.Contains('\\') ? currentUser.Split('\\')[1] : currentUser;
+            var emailDomain = (await _db.AppSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == "CompanyEmailDomain"))?.SettingValue
+                ?? "company.com";
+
+            var usernameOnly = currentUser.Contains('\\')
+                ? currentUser.Split('\\')[1]
+                : currentUser;
 
             var fakeReq = new OutsourceRequest
             {
-                RequestId = 0,
-                PartNumber = "TEST-001",
+                RequestId     = 0,
+                PartNumber    = "TEST-001",
                 SapDescription = "Test Part",
-                Quantity = 1,
-                CreatedAt = DateTime.Now,
-                Reason = "This is a test email from the Outsource Portal."
+                Quantity      = 1,
+                CreatedAt     = DateTime.Now,
+                Reason        = "This is a test email from the Outsource Portal."
             };
 
             var fakeApprover = new ApproverRole
             {
                 FullName = currentUser,
-                Email = $"{usernameOnly}@{emailDomain}"
+                Email    = $"{usernameOnly}@{emailDomain}"
             };
 
-            _email.SendToApprover(fakeReq, fakeApprover);
+            _ = Task.Run(() => _email.SendToApprover(fakeReq, fakeApprover));
 
             TempData["Success"] = $"Test email sent to {fakeApprover.Email}";
             return RedirectToAction(nameof(Index));
         }
 
-        // Seed default admin (call once on first run)
+        // ----------------------------------------------------------------
         // GET: /Admin/Seed?username=DOMAIN\you
-        public IActionResult Seed(string username)
+        // One-time bootstrap: only works if no admin has been set yet.
+        // After first admin is configured via the Admin panel, this is inert.
+        // ----------------------------------------------------------------
+        public async Task<IActionResult> Seed(string username)
         {
-            // Only works if NO admin users are set yet
-            var existing = _db.AppSettings.FirstOrDefault(s => s.SettingKey == "AdminUsers");
+            if (string.IsNullOrWhiteSpace(username))
+                return Content("Usage: /Admin/Seed?username=DOMAIN\\yourusername");
+
+            var existing = await _db.AppSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");
+
             if (existing != null && !string.IsNullOrEmpty(existing.SettingValue))
-                return Content("Admin already seeded.");
+                return Content("Admin already configured. Use the Admin panel to manage admin users.");
 
             if (existing == null)
-            {
                 _db.AppSettings.Add(new AppSetting { SettingKey = "AdminUsers", SettingValue = username });
-            }
             else
-            {
                 existing.SettingValue = username;
-            }
 
-            _db.SaveChanges();
-            return Content($"Admin seeded: {username}. You can now log in to /Admin");
+            await _db.SaveChangesAsync();
+            return Content($"Admin seeded: {username}. You can now access /Admin");
         }
     }
 }

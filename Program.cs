@@ -1,38 +1,38 @@
 using Microsoft.EntityFrameworkCore;
 using OutsourceRequestApp.Data;
+using OutsourceRequestApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ----------------------------------------------------
-// Add services to the container
+// Services
 // ----------------------------------------------------
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddScoped<OutsourceRequestApp.Services.EmailService>();
 
-// Main application database (Outsource Requests)
+builder.Services.AddScoped<EmailService>();
+
+// Main application database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("OutsourceConnection")
-    ));
+        builder.Configuration.GetConnectionString("OutsourceConnection")));
 
-// SAP / Data Warehouse database (Part lookup)
+// SAP / Data Warehouse database (read-only part lookup)
 builder.Services.AddDbContext<WarehouseDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DataWarehouseConnection")
-    ));
+        builder.Configuration.GetConnectionString("DataWarehouseConnection")));
 
-
+// Background service: sends reminder emails to overdue approvers
+builder.Services.AddHostedService<ReminderService>();
 
 // ----------------------------------------------------
-// Build the app
+// Build
 // ----------------------------------------------------
 
 var app = builder.Build();
 
-
 // ----------------------------------------------------
-// Configure the HTTP request pipeline
+// Middleware pipeline
 // ----------------------------------------------------
 
 if (!app.Environment.IsDevelopment())
@@ -48,8 +48,6 @@ app.UseRouting();
 
 app.UseAuthorization();
 
-
-// Default routing
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

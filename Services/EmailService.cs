@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Mail;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
@@ -16,7 +16,16 @@ namespace OutsourceRequestApp.Services
             _logger = logger;
         }
 
-        private SmtpClient? BuildClient(out string fromAddress, out string fromName)
+        // ----------------------------------------------------------------
+        // Private helpers
+        // ----------------------------------------------------------------
+
+        private record SmtpConfig(string Host, int Port, string From, string FromName);
+
+        /// <summary>
+        /// Reads SMTP settings from the database. Returns null if SMTP is not configured.
+        /// </summary>
+        private SmtpConfig? GetConfig()
         {
             var settings = _db.AppSettings.ToList();
 
@@ -24,58 +33,90 @@ namespace OutsourceRequestApp.Services
                 settings.FirstOrDefault(s => s.SettingKey == key)?.SettingValue ?? fallback;
 
             var host = Get("SmtpHost");
-            fromAddress = Get("SmtpFrom", "outsource-portal@company.com");
-            fromName = Get("SmtpFromName", "Outsource Portal");
-
             if (string.IsNullOrEmpty(host))
             {
-                _logger.LogWarning("SMTP host not configured — email not sent.");
+                _logger.LogWarning("SMTP host not configured — email skipped.");
                 return null;
             }
 
             int.TryParse(Get("SmtpPort", "25"), out int port);
 
-            return new SmtpClient(host, port)
-            {
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = true,
-                EnableSsl = false
-            };
+            return new SmtpConfig(
+                host,
+                port,
+                Get("SmtpFrom", "outsource-portal@company.com"),
+                Get("SmtpFromName", "Outsource Portal"));
         }
 
+        /// <summary>
+        /// Creates, uses, and disposes an SmtpClient for a single send operation.
+        /// </summary>
+        private void Send(SmtpConfig cfg, MailMessage msg)
+        {
+            using var client = new SmtpClient(cfg.Host, cfg.Port)
+            {
+                DeliveryMethod      = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = true,
+                EnableSsl           = false
+            };
+            client.Send(msg);
+        }
+
+        private string RequesterEmail(OutsourceRequest req)
+        {
+            var domain = _db.AppSettings
+                .FirstOrDefault(s => s.SettingKey == "CompanyEmailDomain")?.SettingValue
+                ?? "company.com";
+
+            var username = req.CreatedByUsername.Contains('\\')
+                ? req.CreatedByUsername.Split('\\')[1]
+                : req.CreatedByUsername;
+
+            return $"{username}@{domain}";
+        }
+
+        private static string AppUrl()
+        {
+            // Adjust this if your server address changes
+            return "http://csm-srv-16:5200";
+        }
+
+        // ----------------------------------------------------------------
+        // Public send methods
+        // ----------------------------------------------------------------
+
+        /// <summary>Notifies an approver that a request is awaiting their action.</summary>
         public void SendToApprover(OutsourceRequest req, ApproverRole approver)
         {
             try
             {
-                var client = BuildClient(out var from, out var fromName);
-                if (client == null || string.IsNullOrEmpty(approver.Email)) return;
+                var cfg = GetConfig();
+                if (cfg == null || string.IsNullOrEmpty(approver.Email)) return;
 
-                var subject = $"Action required — Outsource Request OSR-{req.RequestId:000000}";
-                var body = $@"
-Hi {approver.FullName},
+                var msg = new MailMessage
+                {
+                    From    = new MailAddress(cfg.From, cfg.FromName),
+                    Subject = $"Action required — OSR-{req.RequestId:000000} awaiting your approval",
+                    Body    = $@"Hi {approver.FullName},
 
 An outsource request requires your approval.
 
-Request:    OSR-{req.RequestId:000000}
-Part:       {req.PartNumber} — {req.SapDescription}
-Quantity:   {req.Quantity}
-Submitted:  {req.CreatedAt:dd MMM yyyy HH:mm}
-Reason:     {req.Reason}
+  Request:   OSR-{req.RequestId:000000}
+  Part:      {req.PartNumber} — {req.SapDescription}
+  Quantity:  {req.Quantity}
+  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm} by {req.CreatedByUsername}
+  Reason:    {req.Reason}
 
-Please log in to the Outsource Portal to review and approve or reject this request.
+Please log in to the portal to review this request:
+{AppUrl()}/Outsource/Track/{req.RequestId}
 
-This is an automated message from the Outsource Request Portal.
-";
-                var msg = new MailMessage
-                {
-                    From = new MailAddress(from, fromName),
-                    Subject = subject,
-                    Body = body,
+This is an automated message — please do not reply.
+",
                     IsBodyHtml = false
                 };
                 msg.To.Add(new MailAddress(approver.Email, approver.FullName));
 
-                client.Send(msg);
+                Send(cfg, msg);
                 _logger.LogInformation("Approval email sent to {Email} for OSR-{Id}", approver.Email, req.RequestId);
             }
             catch (Exception ex)
@@ -84,52 +125,86 @@ This is an automated message from the Outsource Request Portal.
             }
         }
 
+        /// <summary>
+        /// Confirms to the original requester that their request has been submitted
+        /// and is awaiting Supply Chain review.
+        /// </summary>
+        public void SendSubmissionConfirmation(OutsourceRequest req)
+        {
+            try
+            {
+                var cfg = GetConfig();
+                if (cfg == null) return;
+
+                var to = RequesterEmail(req);
+
+                var msg = new MailMessage
+                {
+                    From    = new MailAddress(cfg.From, cfg.FromName),
+                    Subject = $"Request received — OSR-{req.RequestId:000000}",
+                    Body    = $@"Hi,
+
+Your outsource request has been submitted and is now awaiting Supply Chain review.
+
+  Request:   OSR-{req.RequestId:000000}
+  Part:      {req.PartNumber} — {req.SapDescription}
+  Quantity:  {req.Quantity}
+  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm}
+
+You can track the progress of your request here:
+{AppUrl()}/Outsource/Track/{req.RequestId}
+
+This is an automated message — please do not reply.
+",
+                    IsBodyHtml = false
+                };
+                msg.To.Add(to);
+
+                Send(cfg, msg);
+                _logger.LogInformation("Submission confirmation sent to {Email} for OSR-{Id}", to, req.RequestId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send submission confirmation for OSR-{Id}", req.RequestId);
+            }
+        }
+
+        /// <summary>Tells the requester the outcome at a given approval stage.</summary>
         public void SendConfirmationToRequester(OutsourceRequest req, string stage, bool approved, string comments)
         {
             try
             {
-                var client = BuildClient(out var from, out var fromName);
-                if (client == null) return;
+                var cfg = GetConfig();
+                if (cfg == null) return;
 
-                // Try to derive requester email from username (DOMAIN\username -> username@company.com)
-                // You can adjust this logic to match your company's email format
-                var settings = _db.AppSettings.ToList();
-                var emailDomain = settings.FirstOrDefault(s => s.SettingKey == "CompanyEmailDomain")?.SettingValue
-                                  ?? "company.com";
+                var to     = RequesterEmail(req);
+                var status = approved ? "APPROVED" : "REJECTED";
 
-                var usernameOnly = req.CreatedByUsername.Contains('\\')
-                    ? req.CreatedByUsername.Split('\\')[1]
-                    : req.CreatedByUsername;
-
-                var requesterEmail = $"{usernameOnly}@{emailDomain}";
-                var status = approved ? "approved" : "rejected";
-
-                var subject = $"Outsource Request OSR-{req.RequestId:000000} — {stage} {status}";
-                var body = $@"
-Hi,
-
-Your outsource request has been {status} at the {stage} stage.
-
-Request:    OSR-{req.RequestId:000000}
-Part:       {req.PartNumber} — {req.SapDescription}
-Stage:      {stage}
-Decision:   {status.ToUpper()}
-{(string.IsNullOrEmpty(comments) ? "" : $"Comments:   {comments}")}
-
-Please log in to the Outsource Portal to view the full status.
-
-This is an automated message from the Outsource Request Portal.
-";
                 var msg = new MailMessage
                 {
-                    From = new MailAddress(from, fromName),
-                    Subject = subject,
-                    Body = body,
+                    From    = new MailAddress(cfg.From, cfg.FromName),
+                    Subject = $"OSR-{req.RequestId:000000} — {stage} {status.ToLower()}",
+                    Body    = $@"Hi,
+
+Your outsource request has been {status.ToLower()} at the {stage} stage.
+
+  Request:   OSR-{req.RequestId:000000}
+  Part:      {req.PartNumber} — {req.SapDescription}
+  Stage:     {stage}
+  Decision:  {status}
+{(string.IsNullOrEmpty(comments) ? "" : $"  Comments:  {comments}\n")}
+Track the full approval history here:
+{AppUrl()}/Outsource/Track/{req.RequestId}
+
+This is an automated message — please do not reply.
+",
                     IsBodyHtml = false
                 };
-                msg.To.Add(requesterEmail);
+                msg.To.Add(to);
 
-                client.Send(msg);
+                Send(cfg, msg);
+                _logger.LogInformation("Confirmation email sent to {Email} for OSR-{Id} ({Stage} {Status})",
+                    to, req.RequestId, stage, status);
             }
             catch (Exception ex)
             {
@@ -137,38 +212,78 @@ This is an automated message from the Outsource Request Portal.
             }
         }
 
+        /// <summary>
+        /// Notifies the SC approver that a request has been withdrawn by the requester.
+        /// </summary>
+        public void SendCancellationNotice(OutsourceRequest req, ApproverRole scApprover)
+        {
+            try
+            {
+                var cfg = GetConfig();
+                if (cfg == null || string.IsNullOrEmpty(scApprover.Email)) return;
+
+                var msg = new MailMessage
+                {
+                    From    = new MailAddress(cfg.From, cfg.FromName),
+                    Subject = $"Withdrawn — OSR-{req.RequestId:000000} has been cancelled",
+                    Body    = $@"Hi {scApprover.FullName},
+
+The following outsource request has been withdrawn by the requester and no further action is needed.
+
+  Request:   OSR-{req.RequestId:000000}
+  Part:      {req.PartNumber} — {req.SapDescription}
+  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm} by {req.CreatedByUsername}
+
+This is an automated message — please do not reply.
+",
+                    IsBodyHtml = false
+                };
+                msg.To.Add(new MailAddress(scApprover.Email, scApprover.FullName));
+
+                Send(cfg, msg);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send cancellation notice for OSR-{Id}", req.RequestId);
+            }
+        }
+
+        /// <summary>Chase email sent by the background reminder service.</summary>
         public void SendReminder(OutsourceRequest req, ApproverRole approver)
         {
             try
             {
-                var client = BuildClient(out var from, out var fromName);
-                if (client == null || string.IsNullOrEmpty(approver.Email)) return;
+                var cfg = GetConfig();
+                if (cfg == null || string.IsNullOrEmpty(approver.Email)) return;
 
-                var subject = $"Reminder — Outsource Request OSR-{req.RequestId:000000} awaiting your approval";
-                var body = $@"
-Hi {approver.FullName},
+                var waiting = DateTime.Now - req.CreatedAt;
+                var waitStr = waiting.TotalDays >= 1
+                    ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
+                    : $"{waiting.Hours}h {waiting.Minutes}m";
 
-This is a reminder that the following outsource request is still awaiting your approval.
-
-Request:    OSR-{req.RequestId:000000}
-Part:       {req.PartNumber} — {req.SapDescription}
-Submitted:  {req.CreatedAt:dd MMM yyyy HH:mm}
-Waiting:    {(DateTime.Now - req.CreatedAt).Days}d {(DateTime.Now - req.CreatedAt).Hours}h
-
-Please log in to the Outsource Portal to take action.
-
-This is an automated message from the Outsource Request Portal.
-";
                 var msg = new MailMessage
                 {
-                    From = new MailAddress(from, fromName),
-                    Subject = subject,
-                    Body = body,
+                    From    = new MailAddress(cfg.From, cfg.FromName),
+                    Subject = $"Reminder — OSR-{req.RequestId:000000} is still awaiting your approval",
+                    Body    = $@"Hi {approver.FullName},
+
+This is a reminder that the following outsource request is still waiting for your action.
+
+  Request:   OSR-{req.RequestId:000000}
+  Part:      {req.PartNumber} — {req.SapDescription}
+  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm}
+  Waiting:   {waitStr}
+
+Please log in to the portal to take action:
+{AppUrl()}/Outsource/Track/{req.RequestId}
+
+This is an automated message — please do not reply.
+",
                     IsBodyHtml = false
                 };
                 msg.To.Add(new MailAddress(approver.Email, approver.FullName));
 
-                client.Send(msg);
+                Send(cfg, msg);
 
                 req.LastReminderSentAt = DateTime.Now;
                 _db.SaveChanges();

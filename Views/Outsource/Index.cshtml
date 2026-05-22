@@ -1,12 +1,19 @@
-﻿@model List<OutsourceRequestApp.Models.OutsourceRequest>
+@model List<OutsourceRequestApp.Models.OutsourceRequest>
 
 @{
     ViewData["Title"] = "All Requests";
-    int total = Model.Count;
-    int submitted = Model.Count(r => r.Status == "Submitted");
-    int review    = Model.Count(r => r.Status == "Finance_Pending" || r.Status == "MD_Pending");
-    int approved  = Model.Count(r => r.Status == "Approved");
-    int rejected  = Model.Count(r => r.Status == "Rejected");
+
+    int totalAll       = (int)(ViewBag.TotalAll       ?? 0);
+    int totalSubmitted = (int)(ViewBag.TotalSubmitted  ?? 0);
+    int totalReview    = (int)(ViewBag.TotalReview     ?? 0);
+    int totalApproved  = (int)(ViewBag.TotalApproved   ?? 0);
+    int totalRejected  = (int)(ViewBag.TotalRejected   ?? 0);
+
+    int    currentPage   = (int)(ViewBag.CurrentPage   ?? 1);
+    int    totalPages    = (int)(ViewBag.TotalPages     ?? 1);
+    int    totalFiltered = (int)(ViewBag.TotalFiltered  ?? 0);
+    string currentStatus = (string)(ViewBag.CurrentStatus ?? "all");
+    string currentQ      = (string)(ViewBag.CurrentQ      ?? "");
 }
 
 <style>
@@ -21,22 +28,18 @@
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 32px;
+        gap: 16px;
+        flex-wrap: wrap;
     }
 
-        .index-header h2 {
-            font-size: 22px;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
+        .index-header h2 { font-size: 22px; font-weight: 500; margin-bottom: 5px; }
+        .index-header p  { font-size: 13px; color: var(--muted); }
 
-        .index-header p {
-            font-size: 13px;
-            color: var(--muted);
-        }
+    .header-actions { display: flex; gap: 10px; flex-shrink: 0; align-items: center; }
 
     .stats-row {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 12px;
         margin-bottom: 28px;
     }
@@ -45,98 +48,61 @@
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 10px;
-        padding: 18px 20px;
+        padding: 16px 18px;
+        cursor: pointer;
+        transition: border-color .15s;
+        text-decoration: none;
+        display: block;
     }
 
+        .stat-card:hover  { border-color: var(--border2); }
+        .stat-card.s-active { border-color: var(--red); }
+
     .stat-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-        margin-bottom: 10px;
-        font-weight: 500;
+        font-size: 10px; text-transform: uppercase;
+        letter-spacing: .08em; color: var(--muted);
+        margin-bottom: 10px; font-weight: 500;
     }
 
     .stat-val {
-        font-size: 28px;
-        font-weight: 400;
-        color: var(--text);
-        font-family: var(--mono);
+        font-size: 26px; font-weight: 400;
+        color: var(--text); font-family: var(--mono);
     }
 
-        .stat-val.red {
-            color: #ff4d58;
-        }
-
-        .stat-val.amber {
-            color: #fbbf24;
-        }
-
-        .stat-val.green {
-            color: #4ade80;
-        }
+        .stat-val.c-red   { color: #ff4d58; }
+        .stat-val.c-amber { color: #fbbf24; }
+        .stat-val.c-green { color: #4ade80; }
+        .stat-val.c-gray  { color: #f87171; }
 
     .toolbar {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 16px;
-        align-items: center;
+        display: flex; gap: 10px;
+        margin-bottom: 20px; align-items: center; flex-wrap: wrap;
     }
 
     .search-wrap {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px 12px;
+        flex: 1; min-width: 200px;
+        display: flex; align-items: center; gap: 8px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; padding: 8px 12px;
     }
 
         .search-wrap input {
-            background: transparent;
-            border: none;
-            color: var(--text);
-            font-size: 13px;
-            outline: none;
-            flex: 1;
-            font-family: var(--font);
+            background: transparent; border: none;
+            color: var(--text); font-size: 13px;
+            outline: none; flex: 1; font-family: var(--font);
         }
 
-    .search-ico {
-        color: var(--muted);
-        font-size: 15px;
+    .search-ico { color: var(--muted); font-size: 15px; }
+
+    .btn-search {
+        padding: 8px 16px; background: var(--surface);
+        border: 1px solid var(--border2); border-radius: 8px;
+        color: var(--text); font-size: 13px; cursor: pointer;
+        font-family: var(--font); transition: background .15s;
+        white-space: nowrap; text-decoration: none; display: inline-block;
     }
 
-    .filter-pills {
-        display: flex;
-        gap: 6px;
-        margin-bottom: 18px;
-        flex-wrap: wrap;
-    }
-
-    .filter-pill {
-        padding: 5px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        font-size: 12px;
-        cursor: pointer;
-        color: var(--muted);
-        transition: all 0.15s;
-        user-select: none;
-    }
-
-        .filter-pill:hover {
-            border-color: var(--border2);
-            color: var(--text);
-        }
-
-        .filter-pill.active {
-            background: rgba(227,6,19,0.1);
-            border-color: rgba(227,6,19,0.4);
-            color: #ff4d58;
-        }
+        .btn-search:hover { background: var(--surface2); color: var(--text); }
 
     .table-card {
         background: var(--surface);
@@ -145,94 +111,64 @@
         overflow: hidden;
     }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    thead {
-        background: #0f0f11;
-    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #0f0f11; }
 
     th {
-        text-align: left;
-        padding: 11px 16px;
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--muted);
+        text-align: left; padding: 11px 16px;
+        font-size: 10px; letter-spacing: .08em;
+        text-transform: uppercase; color: var(--muted);
         border-bottom: 1px solid var(--border);
-        font-weight: 500;
-        white-space: nowrap;
+        font-weight: 500; white-space: nowrap;
     }
 
     td {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--border);
-        font-size: 13px;
-        color: var(--text);
-        vertical-align: middle;
+        padding: 14px 16px; border-bottom: 1px solid var(--border);
+        font-size: 13px; color: var(--text); vertical-align: middle;
     }
 
-    tbody tr {
-        cursor: pointer;
-        transition: background 0.12s;
-    }
+    tbody tr { cursor: pointer; transition: background .12s; }
+        tbody tr:hover        { background: var(--surface2); }
+        tbody tr:last-child td { border-bottom: none; }
 
-        tbody tr:hover {
-            background: var(--surface2);
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-    .mono-sm {
-        font-family: var(--mono);
-        font-size: 12px;
-        color: var(--muted);
-    }
-
-    .part-num {
-        font-family: var(--mono);
-        font-size: 12px;
-    }
-
-    .part-desc {
-        font-size: 11px;
-        color: var(--muted);
-        margin-top: 2px;
-    }
+    .mono-sm   { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .part-num  { font-family: var(--mono); font-size: 12px; }
+    .part-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
     .track-btn {
-        padding: 5px 14px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 500;
-        background: transparent;
-        border: 1px solid var(--border2);
-        color: var(--text);
-        cursor: pointer;
-        transition: all 0.15s;
-        font-family: var(--font);
+        padding: 5px 14px; border-radius: 999px; font-size: 12px;
+        font-weight: 500; background: transparent;
+        border: 1px solid var(--border2); color: var(--text);
+        cursor: pointer; transition: all .15s; font-family: var(--font);
     }
 
-        .track-btn:hover {
-            background: var(--red);
-            border-color: var(--red);
-            color: #fff;
-        }
+        .track-btn:hover { background: var(--red); border-color: var(--red); color: #fff; }
 
-    .empty-state {
-        padding: 60px 40px;
-        text-align: center;
-        color: var(--muted);
+    .empty-state { padding: 60px 40px; text-align: center; color: var(--muted); }
+        .empty-state p { margin-bottom: 20px; font-size: 14px; }
+
+    /* Pagination */
+    .pagination {
+        display: flex; align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px; border-top: 1px solid var(--border);
+        font-size: 12px; color: var(--muted);
+        flex-wrap: wrap; gap: 10px;
     }
 
-        .empty-state p {
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
+    .page-btns { display: flex; gap: 6px; }
+
+    .page-btn {
+        padding: 5px 14px; border: 1px solid var(--border2);
+        border-radius: 7px; background: transparent;
+        color: var(--text); font-size: 12px; cursor: pointer;
+        text-decoration: none; font-family: var(--font);
+        transition: all .15s; display: inline-block;
+    }
+
+        .page-btn:hover         { background: var(--surface2); color: var(--text); }
+        .page-btn.p-active      { background: var(--red); border-color: var(--red); color: #fff; }
+        .page-btn.p-disabled    { opacity: .35; pointer-events: none; }
 </style>
 
 <div class="index-wrap">
@@ -242,100 +178,94 @@
             <h2>All Requests</h2>
             <p>Sheet metal outsourcing requests across all statuses</p>
         </div>
-        <a class="btn-primary" asp-controller="Outsource" asp-action="Create">+ New Request</a>
+        <div class="header-actions">
+            <a class="btn-ghost" asp-action="Export" title="Download all requests as CSV">↓ Export CSV</a>
+            <a class="btn-primary" asp-action="Create">+ New Request</a>
+        </div>
     </div>
 
+    <!-- Clickable stat cards double as filter shortcuts -->
     <div class="stats-row">
-        <div class="stat-card">
+        <a class="stat-card @(currentStatus == "all" ? "s-active" : "")"
+           href="@Url.Action("Index", new { status = "all", q = currentQ })">
             <div class="stat-label">Total</div>
-            <div class="stat-val">@total</div>
-        </div>
-        <div class="stat-card">
+            <div class="stat-val">@totalAll</div>
+        </a>
+        <a class="stat-card @(currentStatus == "submitted" ? "s-active" : "")"
+           href="@Url.Action("Index", new { status = "submitted", q = currentQ })">
             <div class="stat-label">Submitted</div>
-            <div class="stat-val red">@submitted</div>
-        </div>
-        <div class="stat-card">
+            <div class="stat-val c-red">@totalSubmitted</div>
+        </a>
+        <a class="stat-card @(currentStatus == "review" ? "s-active" : "")"
+           href="@Url.Action("Index", new { status = "review", q = currentQ })">
             <div class="stat-label">In Review</div>
-            <div class="stat-val amber">@review</div>
-        </div>
-        <div class="stat-card">
+            <div class="stat-val c-amber">@totalReview</div>
+        </a>
+        <a class="stat-card @(currentStatus == "approved" ? "s-active" : "")"
+           href="@Url.Action("Index", new { status = "approved", q = currentQ })">
             <div class="stat-label">Approved</div>
-            <div class="stat-val green">@approved</div>
-        </div>
+            <div class="stat-val c-green">@totalApproved</div>
+        </a>
+        <a class="stat-card @(currentStatus == "rejected" ? "s-active" : "")"
+           href="@Url.Action("Index", new { status = "rejected", q = currentQ })">
+            <div class="stat-label">Rejected</div>
+            <div class="stat-val c-gray">@totalRejected</div>
+        </a>
     </div>
 
-    <div class="toolbar">
+    <!-- Server-side search -->
+    <form class="toolbar" method="get" asp-action="Index">
+        <input type="hidden" name="status" value="@currentStatus" />
         <div class="search-wrap">
             <span class="search-ico">⌕</span>
-            <input id="searchInput" placeholder="Search by part number, ID or description…" oninput="filterTable()" />
+            <input name="q" value="@currentQ"
+                   placeholder="Search by part number, ID, description or submitter…" />
         </div>
-    </div>
-
-    <div class="filter-pills">
-        <div class="filter-pill active" onclick="setFilter('all', this)">All (@total)</div>
-        <div class="filter-pill" onclick="setFilter('submitted', this)">Submitted (@submitted)</div>
-        <div class="filter-pill" onclick="setFilter('review', this)">In Review (@review)</div>
-        <div class="filter-pill" onclick="setFilter('approved', this)">Approved (@approved)</div>
-        <div class="filter-pill" onclick="setFilter('rejected', this)">Rejected (@rejected)</div>
-    </div>
+        <button type="submit" class="btn-search">Search</button>
+        @if (!string.IsNullOrEmpty(currentQ))
+        {
+            <a class="btn-search" href="@Url.Action("Index", new { status = currentStatus })">✕ Clear</a>
+        }
+    </form>
 
     @if (!Model.Any())
     {
         <div class="table-card">
             <div class="empty-state">
-                <p>No outsource requests have been submitted yet.</p>
-                <a class="btn-primary" asp-controller="Outsource" asp-action="Create">Create First Request</a>
+                @if (!string.IsNullOrEmpty(currentQ) || currentStatus != "all")
+                {
+                    <p>No requests match your current filter.</p>
+                    <a class="btn-primary" asp-action="Index">Clear filters</a>
+                }
+                else
+                {
+                    <p>No outsource requests have been submitted yet.</p>
+                    <a class="btn-primary" asp-action="Create">Create First Request</a>
+                }
             </div>
         </div>
     }
     else
     {
         <div class="table-card">
-            <table id="requestTable">
+            <table>
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Part</th>
+                        <th>Submitted by</th>
                         <th>Qty</th>
                         <th>Start</th>
                         <th>Status</th>
-                        <th>Submitted</th>
+                        <th>Date</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var r in Model)
                     {
-                        var badgeClass = r.Status switch
-                        {
-                            "Approved"                        => "badge-approved",
-                            "Rejected"                        => "badge-rejected",
-                            "Finance_Pending" or "MD_Pending" => "badge-review",
-                            _                                 => "badge-submitted"
-                        };
-
-                        var filterKey = r.Status switch
-                        {
-                            "Approved"                        => "approved",
-                            "Rejected"                        => "rejected",
-                            "Finance_Pending" or "MD_Pending" => "review",
-                            _                                 => "submitted"
-                        };
-
-                        // Show a friendlier label for internal status codes
-                        var statusLabel = r.Status switch
-                        {
-                            "Finance_Pending" => "Finance Review",
-                            "MD_Pending"      => "MD Review",
-                            _                 => r.Status
-                        };
-
-                        <tr data-status="@filterKey"
-                            data-search="@r.RequestId @r.PartNumber @r.SapDescription"
-                            onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-
+                        <tr onclick="location.href='@Url.Action("Track","Outsource",new{id=r.RequestId})'">
                             <td><span class="mono-sm">#@r.RequestId.ToString("000000")</span></td>
-
                             <td>
                                 <div class="part-num">@r.PartNumber</div>
                                 @if (!string.IsNullOrEmpty(r.SapDescription))
@@ -343,55 +273,57 @@
                                     <div class="part-desc">@r.SapDescription</div>
                                 }
                             </td>
-
+                            <td style="font-size:12px;color:var(--muted);">@r.CreatedByUsername</td>
                             <td>@r.Quantity</td>
-
                             <td style="font-size:12px;">
-                                @(r.StartDate.HasValue? r.StartDate.Value.ToString("dd MMM yyyy") : "—")
+                                @(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yyyy") : "—")
                             </td>
-
                             <td>
-                                <span class="badge @badgeClass">@statusLabel</span>
+                                <span class="badge @RequestStatus.BadgeClass(r.Status)">
+                                    @RequestStatus.Label(r.Status)
+                                </span>
                             </td>
-
                             <td style="font-size:12px;color:var(--muted);">
                                 @r.CreatedAt.ToString("dd MMM yyyy")
                             </td>
-
                             <td>
                                 <button class="track-btn"
-                                        onclick="event.stopPropagation();location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
+                                        onclick="event.stopPropagation();location.href='@Url.Action("Track","Outsource",new{id=r.RequestId})'">
                                     Track
                                 </button>
                             </td>
-
                         </tr>
                     }
                 </tbody>
             </table>
+
+            @if (totalPages > 1)
+            {
+                <div class="pagination">
+                    <span>
+                        Showing @(((currentPage - 1) * 25) + 1)–@(Math.Min(currentPage * 25, totalFiltered))
+                        of @totalFiltered result@(totalFiltered != 1 ? "s" : "")
+                    </span>
+                    <div class="page-btns">
+                        <a class="page-btn @(currentPage <= 1 ? "p-disabled" : "")"
+                           href="@Url.Action("Index", new { status = currentStatus, q = currentQ, page = currentPage - 1 })">
+                            ← Prev
+                        </a>
+                        @for (int p = Math.Max(1, currentPage - 2); p <= Math.Min(totalPages, currentPage + 2); p++)
+                        {
+                            <a class="page-btn @(p == currentPage ? "p-active" : "")"
+                               href="@Url.Action("Index", new { status = currentStatus, q = currentQ, page = p })">
+                                @p
+                            </a>
+                        }
+                        <a class="page-btn @(currentPage >= totalPages ? "p-disabled" : "")"
+                           href="@Url.Action("Index", new { status = currentStatus, q = currentQ, page = currentPage + 1 })">
+                            Next →
+                        </a>
+                    </div>
+                </div>
+            }
         </div>
     }
 
 </div>
-
-@section Scripts {
-    <script>
-        let currentFilter = 'all';
-
-        function setFilter(filter, el) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-            el.classList.add('active');
-            filterTable();
-        }
-
-        function filterTable() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('#requestTable tbody tr').forEach(row => {
-                const statusMatch = currentFilter === 'all' || row.dataset.status === currentFilter;
-                const searchMatch = !term || row.dataset.search.toLowerCase().includes(term);
-                row.style.display = statusMatch && searchMatch ? '' : 'none';
-            });
-        }
-    </script>
-}

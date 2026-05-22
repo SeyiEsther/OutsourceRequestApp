@@ -25,18 +25,17 @@
 
     string badgeClass = Model.Status switch
     {
-        "Approved" => "b-app",
-        "Rejected" => "b-rej",
-        "Finance_Pending" or "MD_Pending" => "b-rev",
-        _ => "b-sub"
+        RequestStatus.Approved                                    => "b-app",
+        RequestStatus.Rejected or RequestStatus.Cancelled         => "b-rej",
+        RequestStatus.FinancePending or RequestStatus.MdPending   => "b-rev",
+        _                                                          => "b-sub"
     };
 
-    string badgeLabel = Model.Status switch
-    {
-        "Finance_Pending" => "Finance Review",
-        "MD_Pending" => "MD Review",
-        _ => Model.Status
-    };
+    string badgeLabel = RequestStatus.Label(Model.Status);
+    bool isCancelled  = Model.Status == RequestStatus.Cancelled;
+
+    bool canWithdraw  = Model.Status == RequestStatus.Submitted &&
+                        currentUser.Equals(Model.CreatedByUsername, StringComparison.OrdinalIgnoreCase);
 
     var waiting = DateTime.Now - Model.CreatedAt;
     string waitingStr = waiting.TotalDays >= 1
@@ -433,6 +432,40 @@
                 outline: none;
             }
 
+    /* WITHDRAW BUTTON */
+    .btn-withdraw {
+        padding: 7px 18px;
+        background: transparent;
+        border: 1px solid rgba(239,68,68,.35);
+        border-radius: 7px;
+        color: #f87171;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: var(--font);
+        transition: all .15s;
+        margin-top: 10px;
+    }
+
+        .btn-withdraw:hover {
+            background: rgba(239,68,68,.12);
+            border-color: rgba(239,68,68,.5);
+        }
+
+    /* CANCELLED BANNER */
+    .cancelled-note {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: #f87171;
+        background: rgba(239,68,68,.07);
+        border: 1px solid rgba(239,68,68,.2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+    }
+
     /* EMAIL NOTE */
     .email-note {
         display: flex;
@@ -450,7 +483,10 @@
 
 <div class="track-wrap">
 
-    <a class="back-link" asp-controller="Outsource" asp-action="Index">← Back to all requests</a>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <a class="back-link" style="margin-bottom:0;" asp-controller="Outsource" asp-action="Index">← Back to all requests</a>
+        <button class="btn-ghost" style="font-size:12px;padding:6px 14px;" onclick="window.print()">🖨 Print</button>
+    </div>
 
     <div class="track-hero">
         <div>
@@ -463,7 +499,19 @@
                 · Waiting @waitingStr
             </div>
         </div>
-        <span class="badge @badgeClass">@badgeLabel</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+            <span class="badge @badgeClass">@badgeLabel</span>
+            @if (canWithdraw)
+            {
+                <form asp-action="Cancel" asp-route-id="@Model.RequestId" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn-withdraw"
+                            onclick="return confirm('Withdraw this request? This cannot be undone.')">
+                        Withdraw Request
+                    </button>
+                </form>
+            }
+        </div>
     </div>
 
     <!-- STEP BAR -->
@@ -472,8 +520,8 @@
             <div class="step-dot">✓</div>
             <div class="step-label">Submitted</div>
         </div>
-        <div class="step @(scDone ? "s-done" : scPending ? "s-active" : "")">
-            <div class="step-dot">@(scDone ? "✓" : "→")</div>
+        <div class="step @(scDone && !isCancelled ? "s-done" : scPending ? "s-active" : "")">
+            <div class="step-dot">@(scDone && !isCancelled ? "✓" : isCancelled ? "✗" : scPending ? "→" : "—")</div>
             <div class="step-label">Supply Chain</div>
         </div>
         <div class="step @(financeDone ? "s-done" : financePending ? "s-active" : "")">
@@ -701,15 +749,41 @@
 
     </div>
 
-    <div class="email-note">
-        <span style="font-size:16px">✉</span>
-        <span>
-            Email notifications sent automatically at each stage.
-            @if (Model.LastReminderSentAt.HasValue)
-            {
-                <text>Last reminder sent @Model.LastReminderSentAt.Value.ToString("dd MMM yyyy, HH:mm").</text>
-            }
-        </span>
-    </div>
+    @if (isCancelled)
+    {
+        <div class="cancelled-note">
+            <span style="font-size:16px">✕</span>
+            <span>This request was withdrawn. @(!string.IsNullOrEmpty(Model.ScComments) ? Model.ScComments : "")</span>
+        </div>
+    }
+    else
+    {
+        <div class="email-note">
+            <span style="font-size:16px">✉</span>
+            <span>
+                Email notifications sent automatically at each stage.
+                @if (Model.LastReminderSentAt.HasValue)
+                {
+                    <text> Last reminder sent @Model.LastReminderSentAt.Value.ToString("dd MMM yyyy, HH:mm").</text>
+                }
+            </span>
+        </div>
+    }
 
 </div>
+
+@section Scripts {
+    <script>
+        // Require explicit confirmation before any approve or reject action
+        document.querySelectorAll('.btn-approve, .btn-reject').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                const isApprove = this.classList.contains('btn-approve');
+                const action    = isApprove ? 'APPROVE' : 'REJECT';
+                const warn      = isApprove
+                    ? 'Approve this request and pass it to the next stage?'
+                    : 'Reject this request? This cannot be undone.';
+                if (!confirm(`${action}: ${warn}`)) e.preventDefault();
+            });
+        });
+    </script>
+}

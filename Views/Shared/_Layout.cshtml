@@ -286,6 +286,84 @@
             color: var(--muted);
             text-align: center;
         }
+
+        /* ============================================================
+           RESPONSIVE — mobile / tablet
+           ============================================================ */
+        @@media (max-width: 768px) {
+            .site-nav {
+                height: auto;
+                padding: 10px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .nav-links {
+                order: 3;
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .nav-link { font-size: 12px; padding: 5px 10px; }
+            .nav-user { order: 2; }
+
+            .form-grid { grid-template-columns: 1fr !important; }
+            .field.span-2 { grid-column: 1 !important; }
+            .stats-row { grid-template-columns: 1fr 1fr !important; }
+
+            .table-card { overflow-x: auto; }
+            table { min-width: 560px; }
+
+            .track-hero { flex-direction: column; gap: 12px; }
+            .index-header { flex-direction: column; }
+            .header-actions { width: 100%; justify-content: flex-end; }
+
+            .step-dot { width: 32px; height: 32px; font-size: 11px; }
+            .step-label { font-size: 10px; max-width: 58px; }
+
+            .queue-item { flex-direction: column; align-items: flex-start; }
+            .role-grid { grid-template-columns: 1fr !important; }
+            .smtp-grid { grid-template-columns: 1fr !important; }
+        }
+
+        /* ============================================================
+           PRINT — clean output for physical sign-off sheets
+           ============================================================ */
+        @@media print {
+            .site-nav, .site-footer, .back-link,
+            .action-btns, .approve-form,
+            .btn-primary, .btn-ghost, .btn-withdraw,
+            .email-note, .toolbar, .pagination,
+            .header-actions, .track-btn,
+            button { display: none !important; }
+
+            body { background: #fff !important; color: #000 !important; font-size: 11pt; }
+
+            .badge {
+                border: 1px solid #999 !important;
+                color: #000 !important;
+                background: transparent !important;
+            }
+
+            .badge::before { display: none !important; }
+
+            .form-card, .table-card, .stage, .stat-card {
+                border: 1px solid #ccc !important;
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+
+            .stage-icon, .step-dot {
+                border: 1px solid #999 !important;
+                background: transparent !important;
+                color: #000 !important;
+            }
+
+            .step:not(:last-child)::after { background: #ccc !important; }
+
+            * { color: #000 !important; -webkit-print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
