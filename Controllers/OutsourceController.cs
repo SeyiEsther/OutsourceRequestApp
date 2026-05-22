@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
 using OutsourceRequestApp.Services;
 using System;
+using System.IO;
 using System.Linq;
 
 namespace OutsourceRequestApp.Controllers
@@ -12,6 +13,15 @@ namespace OutsourceRequestApp.Controllers
         private readonly AppDbContext _db;
         private readonly WarehouseDbContext _warehouseDb;
         private readonly EmailService _email;
+
+        // Allowed MIME types for uploads
+        private static readonly string[] AllowedMimeTypes =
+        {
+            "image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "application/pdf"
+        };
+
+        // 10 MB upload limit
+        private const long MaxUploadBytes = 10 * 1024 * 1024;
 
         public OutsourceController(AppDbContext db, WarehouseDbContext warehouseDb, EmailService email)
         {
@@ -44,21 +54,36 @@ namespace OutsourceRequestApp.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            model.CreatedAt = DateTime.Now;
-            model.Status = "Submitted";
-            model.CreatedByUsername = User?.Identity?.Name ?? "Unknown";
-
-            // Save attachment
+            // Server-side file validation
             if (imageUpload != null && imageUpload.Length > 0)
             {
+                if (imageUpload.Length > MaxUploadBytes)
+                {
+                    ModelState.AddModelError(string.Empty, "Attachment must not exceed 10 MB.");
+                    return View(model);
+                }
+
+                var mimeType = imageUpload.ContentType?.ToLowerInvariant() ?? "";
+                if (!AllowedMimeTypes.Contains(mimeType))
+                {
+                    ModelState.AddModelError(string.Empty,
+                        "Only image files (JPEG, PNG, GIF, BMP, WebP) and PDF documents are allowed.");
+                    return View(model);
+                }
+
                 var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
                 Directory.CreateDirectory(uploads);
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(imageUpload.FileName)}";
+                var ext = Path.GetExtension(imageUpload.FileName).ToLowerInvariant();
+                var fileName = $"{Guid.NewGuid()}{ext}";
                 var filePath = Path.Combine(uploads, fileName);
                 using var stream = new FileStream(filePath, FileMode.Create);
                 imageUpload.CopyTo(stream);
                 model.AttachmentPath = $"uploads/{fileName}";
             }
+
+            model.CreatedAt = DateTime.Now;
+            model.Status = "Submitted";
+            model.CreatedByUsername = User?.Identity?.Name ?? "Unknown";
 
             _db.OutsourceRequests.Add(model);
             _db.SaveChanges();
@@ -68,7 +93,8 @@ namespace OutsourceRequestApp.Controllers
             if (scApprover != null)
                 _email.SendToApprover(model, scApprover);
 
-            return RedirectToAction(nameof(Index));
+            // Redirect straight to the tracker so the submitter can see their request
+            return RedirectToAction(nameof(Track), new { id = model.RequestId });
         }
 
         // GET: /Outsource/Details/5
@@ -100,7 +126,7 @@ namespace OutsourceRequestApp.Controllers
             var request = _db.OutsourceRequests.FirstOrDefault(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            // Only the SC approver or admin can access this
+            // Only the SC approver can access this
             var scApprover = _db.ApproverRoles.FirstOrDefault(r => r.RoleKey == "SC");
             var currentUser = User?.Identity?.Name ?? "";
 
@@ -208,7 +234,7 @@ namespace OutsourceRequestApp.Controllers
             return RedirectToAction(nameof(Track), new { id });
         }
 
-        // My approvals — shows requests waiting on the current user
+        // GET: /Outsource/MyApprovals — shows requests waiting on the current user
         public IActionResult MyApprovals()
         {
             var currentUser = User?.Identity?.Name ?? "";
@@ -228,10 +254,10 @@ namespace OutsourceRequestApp.Controllers
 
             var statusFilter = myRole.RoleKey switch
             {
-                "SC" => "Submitted",
+                "SC"      => "Submitted",
                 "Finance" => "Finance_Pending",
-                "MD" => "MD_Pending",
-                _ => ""
+                "MD"      => "MD_Pending",
+                _         => ""
             };
 
             var pending = _db.OutsourceRequests
@@ -239,30 +265,72 @@ namespace OutsourceRequestApp.Controllers
                 .OrderBy(r => r.CreatedAt)
                 .ToList();
 
-            var approvedBy = myRole.RoleKey switch
+            // Calculate how many this user has approved (passed to next stage or final approval)
+            int approvedCount = myRole.RoleKey switch
             {
-                "SC" => _db.OutsourceRequests.Count(r => r.ScReviewedBy == currentUser),
-                "Finance" => _db.OutsourceRequests.Count(r => r.FinanceReviewedBy == currentUser),
-                "MD" => _db.OutsourceRequests.Count(r => r.MdReviewedBy == currentUser && r.Status == "Approved"),
+                "SC" => _db.OutsourceRequests.Count(r =>
+                    r.ScReviewedBy != null &&
+                    r.ScReviewedBy.ToLower() == currentUser.ToLower() &&
+                    r.Status != "Rejected"),
+                "Finance" => _db.OutsourceRequests.Count(r =>
+                    r.FinanceReviewedBy != null &&
+                    r.FinanceReviewedBy.ToLower() == currentUser.ToLower() &&
+                    r.Status != "Rejected"),
+                "MD" => _db.OutsourceRequests.Count(r =>
+                    r.MdReviewedBy != null &&
+                    r.MdReviewedBy.ToLower() == currentUser.ToLower() &&
+                    r.Status == "Approved"),
+                _ => 0
+            };
+
+            // Calculate how many this user has rejected
+            int rejectedCount = myRole.RoleKey switch
+            {
+                "SC" => _db.OutsourceRequests.Count(r =>
+                    r.ScReviewedBy != null &&
+                    r.ScReviewedBy.ToLower() == currentUser.ToLower() &&
+                    r.Status == "Rejected"),
+                "Finance" => _db.OutsourceRequests.Count(r =>
+                    r.FinanceReviewedBy != null &&
+                    r.FinanceReviewedBy.ToLower() == currentUser.ToLower() &&
+                    r.Status == "Rejected"),
+                "MD" => _db.OutsourceRequests.Count(r =>
+                    r.MdReviewedBy != null &&
+                    r.MdReviewedBy.ToLower() == currentUser.ToLower() &&
+                    r.Status == "Rejected"),
                 _ => 0
             };
 
             ViewBag.MyRole = myRole;
             ViewBag.Pending = pending;
-            ViewBag.Approved = approvedBy;
-            ViewBag.Rejected = 0;
+            ViewBag.Approved = approvedCount;
+            ViewBag.Rejected = rejectedCount;
 
             return View();
         }
 
-        // SAP part search
+        // GET: /Outsource/MyRequests — shows the current user's own submitted requests
+        public IActionResult MyRequests()
+        {
+            var currentUser = User?.Identity?.Name ?? "";
+            var requests = _db.OutsourceRequests
+                .Where(r => r.CreatedByUsername != null &&
+                            r.CreatedByUsername.ToLower() == currentUser.ToLower())
+                .OrderByDescending(r => r.CreatedAt)
+                .ToList();
+
+            return View(requests);
+        }
+
+        // SAP part search — searches both part number and description
         [HttpGet]
         public IActionResult SearchPart(string term)
         {
-            if (string.IsNullOrEmpty(term)) return Json(new { });
+            if (string.IsNullOrWhiteSpace(term)) return Json(Array.Empty<object>());
 
+            var trimmed = term.Trim();
             var parts = _warehouseDb.Articles
-                .Where(a => a.Material.Contains(term))
+                .Where(a => a.Material.Contains(trimmed) || a.MaterialDesc.Contains(trimmed))
                 .Select(a => new { partNumber = a.Material, description = a.MaterialDesc })
                 .Take(10)
                 .ToList();
