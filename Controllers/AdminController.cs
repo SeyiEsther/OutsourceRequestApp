@@ -29,7 +29,7 @@ namespace OutsourceRequestApp.Controllers
         // GET: /Admin
         public IActionResult Index()
         {
-            if (!IsAdmin()) return Forbid();
+            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
             var roles = _db.ApproverRoles.ToList();
             var settings = _db.AppSettings.ToList();
@@ -55,7 +55,7 @@ namespace OutsourceRequestApp.Controllers
         [HttpPost]
         public IActionResult SaveRole(string roleKey, string roleDisplayName, string username, string fullName, string email)
         {
-            if (!IsAdmin()) return Forbid();
+            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
             var role = _db.ApproverRoles.FirstOrDefault(r => r.RoleKey == roleKey);
             if (role == null)
@@ -80,7 +80,7 @@ namespace OutsourceRequestApp.Controllers
         public IActionResult SaveSettings(string smtpHost, string smtpPort, string smtpFrom,
                                           string smtpFromName, string emailDomain, string reminderHours)
         {
-            if (!IsAdmin()) return Forbid();
+            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
             void Set(string key, string value)
             {
@@ -106,7 +106,7 @@ namespace OutsourceRequestApp.Controllers
         [HttpPost]
         public IActionResult SaveAdmins(string adminUsers)
         {
-            if (!IsAdmin()) return Forbid();
+            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
             var s = _db.AppSettings.FirstOrDefault(x => x.SettingKey == "AdminUsers");
             if (s == null) { s = new AppSetting { SettingKey = "AdminUsers" }; _db.AppSettings.Add(s); }
@@ -122,7 +122,7 @@ namespace OutsourceRequestApp.Controllers
         [HttpPost]
         public IActionResult TestEmail()
         {
-            if (!IsAdmin()) return Forbid();
+            if (!IsAdmin()) return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
             // Send a test email to yourself
             var currentUser = User.Identity?.Name ?? "";

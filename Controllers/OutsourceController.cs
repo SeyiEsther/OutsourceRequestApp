@@ -131,7 +131,7 @@ namespace OutsourceRequestApp.Controllers
             var currentUser = User?.Identity?.Name ?? "";
 
             if (scApprover == null || !scApprover.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return Forbid();
+                return StatusCode(403, "You are not assigned as the Supply Chain approver.");
 
             return View(request);
         }
@@ -184,7 +184,7 @@ namespace OutsourceRequestApp.Controllers
             var currentUser = User?.Identity?.Name ?? "";
 
             if (finApprover == null || !finApprover.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return Forbid();
+                return StatusCode(403, "You are not assigned as the Finance approver.");
 
             request.FinanceReviewedAt = DateTime.Now;
             request.FinanceReviewedBy = currentUser;
@@ -220,7 +220,7 @@ namespace OutsourceRequestApp.Controllers
             var currentUser = User?.Identity?.Name ?? "";
 
             if (mdApprover == null || !mdApprover.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return Forbid();
+                return StatusCode(403, "You are not assigned as the Managing Director approver.");
 
             request.MdReviewedAt = DateTime.Now;
             request.MdReviewedBy = currentUser;
