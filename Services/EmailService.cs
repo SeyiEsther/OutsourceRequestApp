@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Logging;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
 
