@@ -5,207 +5,135 @@
 }
 
 <style>
-    .form-wrap {
-        max-width: 860px;
-        margin: 0 auto;
-        padding: 44px 28px 60px;
+    .create-wrap { max-width: 820px; margin: 0 auto; padding: 40px 28px 60px; }
+
+    .create-head { margin-bottom: 32px; }
+    .create-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .create-head p  { font-size: 13px; color: var(--text2); line-height: 1.65; }
+
+    /* Steps indicator */
+    .form-steps {
+        display: flex; gap: 0; margin-bottom: 36px;
     }
-
-    .form-header {
-        margin-bottom: 32px;
+    .fs {
+        flex: 1; display: flex; align-items: center; gap: 8px;
+        padding: 10px 16px;
+        background: var(--card); border: 1px solid var(--border);
+        font-size: 12px; color: var(--text2); font-weight: 500;
     }
-
-        .form-header h2 {
-            font-size: 22px;
-            font-weight: 500;
-            margin-bottom: 6px;
-        }
-
-        .form-header p {
-            font-size: 13px;
-            color: var(--muted);
-            line-height: 1.6;
-        }
-
-    .part-wrap {
-        position: relative;
+    .fs:first-child { border-radius: 9px 0 0 9px; }
+    .fs:last-child  { border-radius: 0 9px 9px 0; }
+    .fs + .fs { border-left: none; }
+    .fs.active { background: var(--accent-dim); border-color: rgba(230,57,70,0.3); color: var(--accent); }
+    .fs-num {
+        width: 20px; height: 20px; border-radius: 50%;
+        background: var(--card2); color: var(--text3);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; flex-shrink: 0;
     }
+    .fs.active .fs-num { background: var(--accent); color: #fff; }
 
+    /* Validation */
+    .val-summary {
+        background: rgba(239,68,68,0.07);
+        border: 1px solid rgba(239,68,68,0.22);
+        border-radius: 9px; padding: 14px 16px;
+        margin-bottom: 22px; font-size: 13px; color: #f87171;
+    }
+    .val-summary ul { margin-left: 16px; margin-top: 6px; }
+    .val-summary li { margin-bottom: 3px; }
+    .field-error { font-size: 11px; color: #f87171; margin-top: 3px; }
+    .field input.input-error, .field textarea.input-error { border-color: rgba(239,68,68,0.5); }
+
+    /* Part lookup */
+    .part-wrap { position: relative; }
     .suggestions {
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        right: 0;
-        background: var(--surface2);
-        border: 1px solid var(--border2);
-        border-radius: 8px;
-        z-index: 50;
-        overflow: hidden;
-        display: none;
-        max-height: 220px;
-        overflow-y: auto;
+        position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+        background: var(--card2); border: 1px solid var(--border2);
+        border-radius: 9px; z-index: 50; overflow: hidden;
+        display: none; max-height: 220px; overflow-y: auto;
     }
-
-        .suggestions li {
-            list-style: none;
-            padding: 9px 12px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            font-size: 13px;
-            transition: background 0.12s;
-        }
-
-            .suggestions li:hover {
-                background: rgba(227, 6, 19, 0.1);
-            }
-
-    .sug-num {
-        font-family: var(--mono);
-        font-size: 12px;
-        color: var(--text);
-        flex-shrink: 0;
+    .suggestions li {
+        list-style: none; padding: 9px 13px; cursor: pointer;
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 12px; font-size: 13px; transition: background 0.1s;
     }
+    .suggestions li:hover { background: rgba(230,57,70,0.1); }
+    .sug-num  { font-family: var(--mono); font-size: 12px; color: var(--text); flex-shrink: 0; }
+    .sug-desc { font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .sug-desc {
-        font-size: 12px;
-        color: var(--muted);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .char-count {
-        font-size: 11px;
-        color: var(--muted);
-        text-align: right;
-        margin-top: 4px;
-    }
-
-    .submit-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 28px;
-    }
-
-    .validation-summary {
-        background: rgba(239,68,68,0.08);
-        border: 1px solid rgba(239,68,68,0.25);
-        border-radius: 8px;
-        padding: 14px 16px;
-        margin-bottom: 20px;
-        font-size: 13px;
-        color: #f87171;
-    }
-
-        .validation-summary ul {
-            margin-left: 16px;
-            margin-top: 6px;
-        }
-
-        .validation-summary li {
-            margin-bottom: 3px;
-        }
-
-    .field-error {
-        font-size: 11px;
-        color: #f87171;
-        margin-top: 3px;
-    }
-
-    .field input.input-error,
-    .field textarea.input-error {
-        border-color: rgba(239,68,68,0.5);
-    }
-
-    /* SAP lookup spinner */
-    .sap-spinner {
-        position: absolute;
-        right: 10px;
-        top: 50%;
+    /* SAP spinner */
+    .sap-spin {
+        position: absolute; right: 10px; top: 50%;
         transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        border: 2px solid var(--border);
-        border-top-color: var(--red);
+        width: 14px; height: 14px;
+        border: 2px solid var(--border2); border-top-color: var(--accent);
         border-radius: 50%;
-        animation: sap-spin 0.6s linear infinite;
-        display: none;
-        pointer-events: none;
+        animation: spin360 0.6s linear infinite;
+        display: none; pointer-events: none;
     }
+    @@keyframes spin360 { to { transform: translateY(-50%) rotate(360deg); } }
+    #PartNumber { padding-right: 34px; }
 
-    @@keyframes sap-spin { to { transform: translateY(-50%) rotate(360deg); } }
+    /* Char counter */
+    .char-count { font-size: 11px; color: var(--text3); text-align: right; margin-top: 4px; }
 
-    #partNumber { padding-right: 32px; }
-
-    /* Styled file upload zone */
+    /* File upload zone */
     .file-zone {
-        border: 2px dashed var(--border2);
-        border-radius: 8px;
-        padding: 24px 20px;
-        text-align: center;
-        cursor: pointer;
+        border: 2px dashed var(--border2); border-radius: 9px;
+        padding: 28px 20px; text-align: center; cursor: pointer;
         transition: border-color .15s, background .15s;
         position: relative;
     }
-
     .file-zone:hover, .file-zone.drag-over {
-        border-color: var(--red);
-        background: rgba(227,6,19,.04);
+        border-color: var(--accent); background: var(--accent-dim);
     }
-
     .file-zone input[type=file] {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        cursor: pointer;
-        width: 100%;
-        height: 100%;
+        position: absolute; inset: 0; opacity: 0;
+        cursor: pointer; width: 100%; height: 100%;
     }
+    .fz-ico { color: var(--text3); margin-bottom: 8px; display: flex; justify-content: center; }
+    .fz-label { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+    .fz-label strong { color: var(--text); }
+    .fz-hint { font-size: 11px; color: var(--text3); }
+    .fz-name { font-size: 12px; color: var(--accent); margin-top: 8px; font-family: var(--mono); min-height: 16px; }
 
-    .file-zone-icon {
-        color: var(--muted);
-        margin-bottom: 8px;
-        display: flex;
-        justify-content: center;
-    }
-
-    .file-zone-label {
-        font-size: 13px;
-        color: var(--muted);
-        margin-bottom: 4px;
-    }
-
-        .file-zone-label strong { color: var(--text); }
-
-    .file-zone-hint {
-        font-size: 11px;
-        color: var(--muted);
-        opacity: 0.7;
-    }
-
-    .file-zone-name {
-        font-size: 12px;
-        color: var(--red);
-        margin-top: 8px;
-        font-family: var(--mono);
-        min-height: 16px;
+    /* Submit row */
+    .submit-row {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 32px;
     }
 </style>
 
-<div class="form-wrap">
+<div class="create-wrap">
 
-    <div class="form-header">
+    <div class="create-head">
         <h2>New Outsource Request</h2>
         <p>Section 1 — Work Preparation. Supply Chain &amp; Finance complete Section 2 after submission.</p>
     </div>
 
+    <div class="form-steps">
+        <div class="fs active">
+            <span class="fs-num">1</span>
+            Work Preparation
+        </div>
+        <div class="fs">
+            <span class="fs-num">2</span>
+            Supply Chain Review
+        </div>
+        <div class="fs">
+            <span class="fs-num">3</span>
+            Finance Sign-off
+        </div>
+        <div class="fs">
+            <span class="fs-num">4</span>
+            MD Approval
+        </div>
+    </div>
+
     @if (!ViewData.ModelState.IsValid)
     {
-        <div class="validation-summary">
+        <div class="val-summary">
             <strong>Please fix the following errors:</strong>
             <ul>
                 @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
@@ -236,11 +164,9 @@
                 <div class="field">
                     <label>Part number *</label>
                     <div class="part-wrap">
-                        <input id="partNumber"
-                               asp-for="PartNumber"
-                               placeholder="Search SAP part number…"
-                               autocomplete="off" />
-                        <div class="sap-spinner" id="sapSpinner"></div>
+                        <input id="PartNumber" asp-for="PartNumber"
+                               placeholder="Search SAP part number…" autocomplete="off" />
+                        <div class="sap-spin" id="sapSpinner"></div>
                         <ul id="suggestions" class="suggestions"></ul>
                     </div>
                     <span asp-validation-for="PartNumber" class="field-error"></span>
@@ -248,10 +174,8 @@
 
                 <div class="field">
                     <label>SAP description</label>
-                    <input id="partDescription"
-                           asp-for="SapDescription"
-                           placeholder="Auto-filled from SAP"
-                           readonly />
+                    <input id="partDescription" asp-for="SapDescription"
+                           placeholder="Auto-filled from SAP" readonly />
                 </div>
 
                 <div class="field">
@@ -277,8 +201,7 @@
         <div class="form-card">
             <div class="field">
                 <label>Why can't this be produced in-house? *</label>
-                <textarea id="reasonText"
-                          asp-for="Reason"
+                <textarea id="reasonText" asp-for="Reason"
                           placeholder="Include capacity constraints, machine availability, skill gaps, or any other relevant details…"
                           maxlength="1000"></textarea>
                 <div class="char-count"><span id="charCount">0</span> / 1000</div>
@@ -288,28 +211,34 @@
 
         <div class="section-label">Attachments</div>
         <div class="form-card">
-            <label style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;">
+            <label style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:10px;">
                 Supporting image or document (optional)
             </label>
             <div class="file-zone" id="fileZone">
                 <input type="file" name="imageUpload" id="fileInput" accept="image/*,.pdf" />
-                <div class="file-zone-icon">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="fz-ico">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="17 8 12 3 7 8"/>
                         <line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
                 </div>
-                <div class="file-zone-label"><strong>Click to upload</strong> or drag and drop</div>
-                <div class="file-zone-hint">JPEG, PNG, GIF, BMP, WebP, PDF · Max 10 MB</div>
-                <div class="file-zone-name" id="fileZoneName"></div>
+                <div class="fz-label"><strong>Click to upload</strong> or drag and drop</div>
+                <div class="fz-hint">JPEG, PNG, GIF, BMP, WebP, PDF · Max 10 MB</div>
+                <div class="fz-name" id="fileZoneName"></div>
             </div>
             <div id="imagePreview" style="margin-top:12px;"></div>
         </div>
 
         <div class="submit-row">
             <a class="btn-ghost" asp-controller="Home" asp-action="Index">Cancel</a>
-            <button type="submit" class="btn-primary">Submit Request →</button>
+            <button type="submit" class="btn-primary">
+                Submit Request
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                </svg>
+            </button>
         </div>
 
     </form>
@@ -317,76 +246,59 @@
 
 @section Scripts {
     <script>
-        const partInput = document.getElementById('partNumber');
-        const descInput = document.getElementById('partDescription');
-        const suggBox   = document.getElementById('suggestions');
+        const partInput  = document.getElementById('PartNumber');
+        const descInput  = document.getElementById('partDescription');
+        const suggBox    = document.getElementById('suggestions');
         const sapSpinner = document.getElementById('sapSpinner');
-        const reasonTA  = document.getElementById('reasonText');
-        const charCount = document.getElementById('charCount');
+        const reasonTA   = document.getElementById('reasonText');
+        const charCount  = document.getElementById('charCount');
 
         let validPartSelected = false;
         let selectingSuggestion = false;
 
-        // Character counter
         reasonTA.addEventListener('input', () => { charCount.textContent = reasonTA.value.length; });
         charCount.textContent = reasonTA.value.length;
 
-        // SAP part lookup with loading indicator
         async function searchParts(term) {
             sapSpinner.style.display = 'block';
             try {
                 const res = await fetch(`/Outsource/SearchPart?term=${encodeURIComponent(term)}`);
                 return await res.json();
-            } catch {
-                return [];
-            } finally {
-                sapSpinner.style.display = 'none';
-            }
+            } catch { return []; }
+            finally { sapSpinner.style.display = 'none'; }
         }
 
         partInput.addEventListener('input', async () => {
             validPartSelected = false;
-            descInput.value = '';
-            descInput.style.color = '';
-
+            descInput.value = ''; descInput.style.color = '';
             const term = partInput.value.trim();
             if (term.length < 2) { suggBox.style.display = 'none'; return; }
-
             const data = await searchParts(term);
             suggBox.innerHTML = '';
-
             data.forEach(p => {
                 const li = document.createElement('li');
                 li.innerHTML = `<span class="sug-num">${p.partNumber}</span><span class="sug-desc">${p.description}</span>`;
                 li.addEventListener('mousedown', e => {
-                    e.preventDefault();
-                    selectingSuggestion = true;
-                    partInput.value   = p.partNumber;
-                    descInput.value   = p.description;
-                    descInput.style.color = '';
-                    validPartSelected = true;
-                    suggBox.style.display = 'none';
+                    e.preventDefault(); selectingSuggestion = true;
+                    partInput.value = p.partNumber;
+                    descInput.value = p.description; descInput.style.color = '';
+                    validPartSelected = true; suggBox.style.display = 'none';
                     setTimeout(() => selectingSuggestion = false, 0);
                 });
                 suggBox.appendChild(li);
             });
-
             suggBox.style.display = data.length ? 'block' : 'none';
         });
 
         partInput.addEventListener('blur', async () => {
             if (selectingSuggestion || validPartSelected) return;
             suggBox.style.display = 'none';
-
             const value = partInput.value.trim();
             if (!value) return;
-
             const data = await searchParts(value);
             const match = data.find(p => p.partNumber.toLowerCase() === value.toLowerCase());
-
             if (match) {
-                descInput.value = match.description;
-                descInput.style.color = '';
+                descInput.value = match.description; descInput.style.color = '';
                 validPartSelected = true;
             } else {
                 descInput.value = 'Part not found in SAP';
@@ -403,7 +315,7 @@
             if (!validPartSelected) {
                 e.preventDefault();
                 SiteModal.alert(
-                    'Please select a valid SAP part number from the suggestions before submitting.',
+                    'Please select a valid SAP part number from the dropdown suggestions before submitting.',
                     'Invalid Part Number'
                 );
             }
@@ -415,27 +327,23 @@
         const fileZoneName = document.getElementById('fileZoneName');
         const preview      = document.getElementById('imagePreview');
 
-        fileZone.addEventListener('dragover', e => { e.preventDefault(); fileZone.classList.add('drag-over'); });
+        fileZone.addEventListener('dragover',  e => { e.preventDefault(); fileZone.classList.add('drag-over'); });
         fileZone.addEventListener('dragleave', () => fileZone.classList.remove('drag-over'));
         fileZone.addEventListener('drop', e => {
-            e.preventDefault();
-            fileZone.classList.remove('drag-over');
+            e.preventDefault(); fileZone.classList.remove('drag-over');
             if (e.dataTransfer.files.length) {
-                // DataTransfer.files is read-only — trigger via input
                 const dt = new DataTransfer();
                 dt.items.add(e.dataTransfer.files[0]);
                 fileInput.files = dt.files;
                 handleFile(fileInput.files[0]);
             }
         });
-
         fileInput.addEventListener('change', function () { handleFile(this.files[0]); });
 
         function handleFile(file) {
             preview.innerHTML = '';
             if (!file) { fileZoneName.textContent = ''; return; }
             fileZoneName.textContent = file.name;
-
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = e => {
@@ -446,7 +354,7 @@
                 };
                 reader.readAsDataURL(file);
             } else if (file.type === 'application/pdf') {
-                preview.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:6px;">📄 ${file.name} (PDF)</div>`;
+                preview.innerHTML = `<div style="font-size:12px;color:var(--text2);margin-top:6px;">📄 ${file.name} (PDF)</div>`;
             }
         }
     </script>

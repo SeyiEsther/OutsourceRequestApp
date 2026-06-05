@@ -9,173 +9,124 @@
 }
 
 <style>
-    .my-wrap {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 44px 28px 60px;
+    .myr { max-width: 960px; margin: 0 auto; padding: 40px 28px 60px; }
+
+    .pg-head {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
     }
+    .pg-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .pg-head p  { font-size: 13px; color: var(--text2); }
 
-    .my-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 32px;
+    .stat-strip {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 10px; margin-bottom: 26px;
     }
-
-        .my-header h2 {
-            font-size: 22px;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-
-        .my-header p {
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-    .stats-row {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 28px;
+    .stat-tile {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 10px; padding: 16px 18px;
     }
-
-    .stat-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 18px 20px;
+    .st-label {
+        font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
+        color: var(--text3); font-weight: 600; margin-bottom: 8px;
     }
+    .st-val { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--text); }
+    .st-val.amber { color: #fbbf24; }
+    .st-val.green { color: #4ade80; }
+    .st-val.red   { color: #f87171; }
 
-    .stat-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-        margin-bottom: 10px;
-        font-weight: 500;
+    .table-wrap {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 12px; overflow: hidden;
     }
-
-    .stat-val {
-        font-size: 28px;
-        font-weight: 400;
-        color: var(--text);
-        font-family: var(--mono);
-    }
-
-        .stat-val.green  { color: #4ade80; }
-        .stat-val.amber  { color: #fbbf24; }
-        .stat-val.red-t  { color: #f87171; }
-
-    .table-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
     table { width: 100%; border-collapse: collapse; }
-
-    thead { background: #0f0f11; }
-
+    thead { background: #090d14; }
     th {
-        text-align: left;
-        padding: 11px 16px;
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--muted);
+        text-align: left; padding: 11px 16px;
+        font-size: 10px; letter-spacing: .1em;
+        text-transform: uppercase; color: var(--text3);
         border-bottom: 1px solid var(--border);
-        font-weight: 500;
-        white-space: nowrap;
+        font-weight: 600; white-space: nowrap;
     }
-
     td {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--border);
-        font-size: 13px;
-        color: var(--text);
-        vertical-align: middle;
+        padding: 14px 16px; border-bottom: 1px solid var(--border);
+        font-size: 13px; color: var(--text); vertical-align: middle;
     }
+    tbody tr { cursor: pointer; transition: background .1s; }
+    tbody tr:hover        { background: var(--card2); }
+    tbody tr:last-child td { border-bottom: none; }
 
-    tbody tr {
-        cursor: pointer;
-        transition: background 0.12s;
+    .cell-id   { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+    .cell-part { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+    .cell-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .cell-muted { font-size: 12px; color: var(--text2); }
+
+    .pill-btn {
+        padding: 5px 14px; border-radius: 999px;
+        font-size: 11px; font-weight: 500;
+        background: transparent; border: 1px solid var(--border2);
+        color: var(--text2); cursor: pointer;
+        transition: all .15s; font-family: var(--font); white-space: nowrap;
     }
+    .pill-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-        tbody tr:hover { background: var(--surface2); }
-        tbody tr:last-child td { border-bottom: none; }
-
-    .mono-sm {
-        font-family: var(--mono);
-        font-size: 12px;
-        color: var(--muted);
+    .empty-state { padding: 60px 40px; text-align: center; color: var(--text2); }
+    .empty-ico {
+        width: 48px; height: 48px; background: var(--card2);
+        border-radius: 12px; display: flex; align-items: center;
+        justify-content: center; margin: 0 auto 16px;
     }
+    .empty-ico svg { width: 22px; height: 22px; stroke: var(--text3); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .empty-state p { margin-bottom: 20px; font-size: 14px; }
 
-    .part-num  { font-family: var(--mono); font-size: 12px; }
-    .part-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-    .track-btn {
-        padding: 5px 14px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 500;
-        background: transparent;
-        border: 1px solid var(--border2);
-        color: var(--text);
-        cursor: pointer;
-        transition: all 0.15s;
-        font-family: var(--font);
+    @@media (max-width: 768px) {
+        .stat-strip { grid-template-columns: 1fr 1fr; }
+        .table-wrap { overflow-x: auto; }
+        table { min-width: 500px; }
     }
-
-        .track-btn:hover {
-            background: var(--red);
-            border-color: var(--red);
-            color: #fff;
-        }
-
-    .empty-state {
-        padding: 60px 40px;
-        text-align: center;
-        color: var(--muted);
-    }
-
-        .empty-state p { margin-bottom: 20px; font-size: 14px; }
 </style>
 
-<div class="my-wrap">
+<div class="myr">
 
-    <div class="my-header">
+    <div class="pg-head">
         <div>
             <h2>My Requests</h2>
             <p>Outsource requests submitted by you</p>
         </div>
-        <a class="btn-primary" asp-controller="Outsource" asp-action="Create">+ New Request</a>
+        <a class="btn-primary" asp-controller="Outsource" asp-action="Create">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Request
+        </a>
     </div>
 
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">Total</div>
-            <div class="stat-val">@total</div>
+    <div class="stat-strip">
+        <div class="stat-tile">
+            <div class="st-label">Total</div>
+            <div class="st-val">@total</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">In Progress</div>
-            <div class="stat-val amber">@pending</div>
+        <div class="stat-tile">
+            <div class="st-label">In Progress</div>
+            <div class="st-val amber">@pending</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Approved</div>
-            <div class="stat-val green">@approved</div>
+        <div class="stat-tile">
+            <div class="st-label">Approved</div>
+            <div class="st-val green">@approved</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Rejected</div>
-            <div class="stat-val red-t">@rejected</div>
+        <div class="stat-tile">
+            <div class="st-label">Rejected</div>
+            <div class="st-val red">@rejected</div>
         </div>
     </div>
 
     @if (!Model.Any())
     {
-        <div class="table-card">
+        <div class="table-wrap">
             <div class="empty-state">
+                <div class="empty-ico">
+                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
                 <p>You haven't submitted any outsource requests yet.</p>
                 <a class="btn-primary" asp-controller="Outsource" asp-action="Create">Create First Request</a>
             </div>
@@ -183,14 +134,14 @@
     }
     else
     {
-        <div class="table-card">
+        <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Part</th>
                         <th>Qty</th>
-                        <th>Start</th>
+                        <th>Start date</th>
                         <th>Status</th>
                         <th>Submitted</th>
                         <th></th>
@@ -199,41 +150,27 @@
                 <tbody>
                     @foreach (var r in Model)
                     {
-                        var badgeClass = r.Status switch
-                        {
-                            "Approved"                        => "badge-approved",
-                            "Rejected"                        => "badge-rejected",
-                            "Finance_Pending" or "MD_Pending" => "badge-review",
-                            _                                 => "badge-submitted"
-                        };
-                        var statusLabel = r.Status switch
-                        {
-                            "Finance_Pending" => "Finance Review",
-                            "MD_Pending"      => "MD Review",
-                            _                 => r.Status
-                        };
-
                         <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-                            <td><span class="mono-sm">#@r.RequestId.ToString("000000")</span></td>
+                            <td><span class="cell-id">#@r.RequestId.ToString("000000")</span></td>
                             <td>
-                                <div class="part-num">@r.PartNumber</div>
+                                <div class="cell-part">@r.PartNumber</div>
                                 @if (!string.IsNullOrEmpty(r.SapDescription))
                                 {
-                                    <div class="part-desc">@r.SapDescription</div>
+                                    <div class="cell-desc">@r.SapDescription</div>
                                 }
                             </td>
                             <td>@r.Quantity</td>
-                            <td style="font-size:12px;">
-                                @(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yyyy") : "—")
-                            </td>
-                            <td><span class="badge @badgeClass">@statusLabel</span></td>
-                            <td style="font-size:12px;color:var(--muted);">
-                                @r.CreatedAt.ToString("dd MMM yyyy")
-                            </td>
+                            <td class="cell-muted">@(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yy") : "—")</td>
                             <td>
-                                <button class="track-btn"
+                                <span class="badge @RequestStatus.BadgeClass(r.Status)">
+                                    @RequestStatus.Label(r.Status)
+                                </span>
+                            </td>
+                            <td class="cell-muted">@r.CreatedAt.ToString("dd MMM yy")</td>
+                            <td>
+                                <button class="pill-btn"
                                         onclick="event.stopPropagation();location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-                                    Track
+                                    Track →
                                 </button>
                             </td>
                         </tr>
