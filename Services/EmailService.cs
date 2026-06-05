@@ -248,6 +248,50 @@ This is an automated message — please do not reply.
             }
         }
 
+        /// <summary>Notifies SC that they need to enter cost impact data.</summary>
+        public void SendCostImpactRequest(OutsourceRequest req, ApproverRole sgApprover)
+        {
+            try
+            {
+                var cfg = GetConfig();
+                if (cfg == null) return;
+
+                // Try CostImpactEmail setting, fall back to SG approver email
+                var costEmail = _db.AppSettings
+                    .FirstOrDefault(s => s.SettingKey == "CostImpactEmail")?.SettingValue;
+                var toEmail = string.IsNullOrEmpty(costEmail)
+                    ? (string.IsNullOrEmpty(sgApprover?.Email) ? null : sgApprover.Email)
+                    : costEmail;
+                if (toEmail == null) return;
+
+                var msg = new MailMessage
+                {
+                    From    = new MailAddress(cfg.From, cfg.FromName),
+                    Subject = $"Cost impact required — OSR-{req.RequestId:000000}",
+                    Body    = $@"Hi,
+
+A cost impact analysis is required for the following outsource request before it can proceed to final approval.
+
+  Request:   OSR-{req.RequestId:000000}
+  Part:      {req.PartNumber} — {req.SapDescription}
+  Quantity:  {req.Quantity}
+
+Please log in and enter the cost impact details:
+{AppUrl()}/Outsource/Track/{req.RequestId}
+
+This is an automated message — please do not reply.
+",
+                    IsBodyHtml = false
+                };
+                msg.To.Add(toEmail);
+                Send(cfg, msg);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send cost impact request email for OSR-{Id}", req.RequestId);
+            }
+        }
+
         /// <summary>Chase email sent by the background reminder service.</summary>
         public void SendReminder(OutsourceRequest req, ApproverRole approver)
         {

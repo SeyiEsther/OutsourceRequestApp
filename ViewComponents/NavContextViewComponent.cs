@@ -8,10 +8,6 @@ using System.Threading.Tasks;
 
 namespace OutsourceRequestApp.ViewComponents
 {
-    /// <summary>
-    /// Resolved per-request: tells the layout which nav links to show and
-    /// how many items are currently awaiting the current user's approval.
-    /// </summary>
     public class NavContextViewModel
     {
         public bool   IsAdmin         { get; set; }
@@ -34,7 +30,6 @@ namespace OutsourceRequestApp.ViewComponents
         {
             var currentUser = HttpContext.User?.Identity?.Name ?? "";
 
-            // ── Admin check ──────────────────────────────────────────────
             var adminSetting = await _db.AppSettings
                 .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");
 
@@ -42,7 +37,6 @@ namespace OutsourceRequestApp.ViewComponents
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Any(a => a.Trim().Equals(currentUser, StringComparison.OrdinalIgnoreCase));
 
-            // ── Approver role check ──────────────────────────────────────
             var approverRole = await _db.ApproverRoles
                 .FirstOrDefaultAsync(r =>
                     r.Username != null &&
@@ -55,23 +49,40 @@ namespace OutsourceRequestApp.ViewComponents
             {
                 approverLabel = approverRole.RoleKey switch
                 {
+                    "WorkPrepManager"    => "Work Prep Manager",
+                    "ProductionManager"  => "Production Manager",
+                    "SupplyChainManager" => "Supply Chain Manager",
+                    "ManagingDirector"   => "Managing Director",
+                    // Legacy keys
                     "SC"      => "Supply Chain",
                     "Finance" => "Finance",
                     "MD"      => "Managing Director",
                     _         => approverRole.RoleDisplayName
                 };
 
-                var statusFilter = approverRole.RoleKey switch
+                if (approverRole.RoleKey == "SupplyChainManager")
                 {
-                    "SC"      => RequestStatus.Submitted,
-                    "Finance" => RequestStatus.FinancePending,
-                    "MD"      => RequestStatus.MdPending,
-                    _         => ""
-                };
-
-                if (!string.IsNullOrEmpty(statusFilter))
                     pendingCount = await _db.OutsourceRequests
-                        .CountAsync(r => r.Status == statusFilter);
+                        .CountAsync(r => r.Status == RequestStatus.AwaitingCostImpact ||
+                                         r.Status == RequestStatus.FinancePending);
+                }
+                else
+                {
+                    var statusFilter = approverRole.RoleKey switch
+                    {
+                        "WorkPrepManager"   => RequestStatus.Submitted,
+                        "ProductionManager" => RequestStatus.AwaitingLJApproval,
+                        "ManagingDirector"  => RequestStatus.MdPending,
+                        "SC"      => RequestStatus.Submitted,
+                        "Finance" => RequestStatus.FinancePending,
+                        "MD"      => RequestStatus.MdPending,
+                        _         => ""
+                    };
+
+                    if (!string.IsNullOrEmpty(statusFilter))
+                        pendingCount = await _db.OutsourceRequests
+                            .CountAsync(r => r.Status == statusFilter);
+                }
             }
 
             return View(new NavContextViewModel

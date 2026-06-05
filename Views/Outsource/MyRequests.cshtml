@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "My Requests";
     int total    = Model.Count;
-    int pending  = Model.Count(r => r.Status is "Submitted" or "Finance_Pending" or "MD_Pending");
+    int pending  = Model.Count(r => OutsourceRequestApp.Models.RequestStatus.IsPending(r.Status));
     int approved = Model.Count(r => r.Status == "Approved");
     int rejected = Model.Count(r => r.Status == "Rejected");
 }

@@ -1,0 +1,94 @@
+@model List<OutsourceRequestApp.Models.OutsourceRequestAuditLog>
+
+@{
+    ViewData["Title"] = "Audit Log";
+    int? reqId = ViewBag.RequestId as int?;
+}
+
+<style>
+    .audit-pg { max-width: 960px; margin: 0 auto; padding: 40px 24px 60px; }
+    .pg-head { margin-bottom: 24px; }
+    .pg-head h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .pg-head p  { font-size: 13px; color: var(--text2); }
+
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #090d14; }
+    th { text-align: left; padding: 11px 16px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); font-weight: 600; }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--card2); }
+
+    .filter-row { display: flex; gap: 10px; margin-bottom: 18px; align-items: center; flex-wrap: wrap; }
+    .filter-row input { background: var(--bg); color: var(--text); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 12px; font-family: var(--font); font-size: 13px; width: 180px; }
+    .filter-row input:focus { border-color: var(--accent); outline: none; }
+</style>
+
+<div class="audit-pg">
+    <div class="pg-head">
+        <h2>Audit Log</h2>
+        <p>
+            @if (reqId.HasValue) { <text>Showing entries for request #@reqId · </text> }
+            @Model.Count entries
+        </p>
+    </div>
+
+    <div class="filter-row">
+        <form method="get" style="display:flex;gap:8px;align-items:center;">
+            <input name="requestId" type="number" placeholder="Filter by Request ID" value="@reqId" />
+            <button type="submit" class="btn-save">Filter</button>
+        </form>
+        @if (reqId.HasValue)
+        {
+            <a class="btn-ghost" style="font-size:12px;" asp-action="AuditLog">Clear filter</a>
+        }
+        <a class="btn-ghost" style="font-size:12px;margin-left:auto;" asp-action="Index">&#8592; Admin Panel</a>
+    </div>
+
+    <div class="table-wrap">
+        @if (!Model.Any())
+        {
+            <div style="padding:40px;text-align:center;color:var(--text2);">No audit entries found.</div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Request</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Status change</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in Model)
+                    {
+                        <tr>
+                            <td style="font-family:var(--mono);font-size:11px;color:var(--text2);white-space:nowrap;">
+                                @log.Timestamp.ToString("dd MMM yy HH:mm")
+                            </td>
+                            <td>
+                                <a style="color:var(--accent);font-family:var(--mono);font-size:12px;"
+                                   asp-controller="Outsource" asp-action="Track" asp-route-id="@log.RequestId">
+                                    #@log.RequestId.ToString("000000")
+                                </a>
+                            </td>
+                            <td style="font-family:var(--mono);font-size:12px;">@log.Actor</td>
+                            <td style="font-size:13px;font-weight:500;">@log.Action</td>
+                            <td style="font-size:11px;color:var(--text2);">
+                                @if (!string.IsNullOrEmpty(log.FromStatus) || !string.IsNullOrEmpty(log.ToStatus))
+                                {
+                                    <span>@(log.FromStatus ?? "—") &#8594; @(log.ToStatus ?? "—")</span>
+                                }
+                            </td>
+                            <td style="font-size:12px;color:var(--text2);font-style:italic;">@log.Notes</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

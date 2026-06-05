@@ -11,15 +11,14 @@
     .create-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
     .create-head p  { font-size: 13px; color: var(--text2); line-height: 1.65; }
 
-    /* Steps indicator */
     .form-steps {
         display: flex; gap: 0; margin-bottom: 36px;
     }
     .fs {
         flex: 1; display: flex; align-items: center; gap: 8px;
-        padding: 10px 16px;
+        padding: 10px 12px;
         background: var(--card); border: 1px solid var(--border);
-        font-size: 12px; color: var(--text2); font-weight: 500;
+        font-size: 11px; color: var(--text2); font-weight: 500;
     }
     .fs:first-child { border-radius: 9px 0 0 9px; }
     .fs:last-child  { border-radius: 0 9px 9px 0; }
@@ -33,7 +32,6 @@
     }
     .fs.active .fs-num { background: var(--accent); color: #fff; }
 
-    /* Validation */
     .val-summary {
         background: rgba(239,68,68,0.07);
         border: 1px solid rgba(239,68,68,0.22);
@@ -45,7 +43,6 @@
     .field-error { font-size: 11px; color: #f87171; margin-top: 3px; }
     .field input.input-error, .field textarea.input-error { border-color: rgba(239,68,68,0.5); }
 
-    /* Part lookup */
     .part-wrap { position: relative; }
     .suggestions {
         position: absolute; top: calc(100% + 4px); left: 0; right: 0;
@@ -62,7 +59,6 @@
     .sug-num  { font-family: var(--mono); font-size: 12px; color: var(--text); flex-shrink: 0; }
     .sug-desc { font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* SAP spinner */
     .sap-spin {
         position: absolute; right: 10px; top: 50%;
         transform: translateY(-50%);
@@ -75,10 +71,8 @@
     @@keyframes spin360 { to { transform: translateY(-50%) rotate(360deg); } }
     #PartNumber { padding-right: 34px; }
 
-    /* Char counter */
     .char-count { font-size: 11px; color: var(--text3); text-align: right; margin-top: 4px; }
 
-    /* File upload zone */
     .file-zone {
         border: 2px dashed var(--border2); border-radius: 9px;
         padding: 28px 20px; text-align: center; cursor: pointer;
@@ -98,35 +92,72 @@
     .fz-hint { font-size: 11px; color: var(--text3); }
     .fz-name { font-size: 12px; color: var(--accent); margin-top: 8px; font-family: var(--mono); min-height: 16px; }
 
-    /* Submit row */
+    /* Toggle row */
+    .toggle-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { flex: 1; font-size: 13px; }
+    .toggle-label small { font-size: 11px; color: var(--text2); display: block; margin-top: 2px; }
+    .toggle-switch {
+        position: relative; width: 38px; height: 22px; cursor: pointer; flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-switch .slider {
+        position: absolute; inset: 0;
+        background: var(--border2); border-radius: 22px;
+        transition: background .2s;
+    }
+    .toggle-switch .slider::before {
+        content: ''; position: absolute;
+        width: 16px; height: 16px; border-radius: 50%;
+        background: #fff; top: 3px; left: 3px; transition: transform .2s;
+    }
+    .toggle-switch input:checked + .slider { background: var(--accent); }
+    .toggle-switch input:checked + .slider::before { transform: translateX(16px); }
+
+    /* Conditional sub-fields */
+    .sub-fields { margin-top: 12px; display: none; }
+    .sub-fields.visible { display: block; }
+
     .submit-row {
         display: flex; justify-content: space-between; align-items: center;
-        margin-top: 32px;
+        gap: 12px; margin-top: 32px; flex-wrap: wrap;
     }
+    .submit-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 </style>
 
 <div class="create-wrap">
 
     <div class="create-head">
         <h2>New Outsource Request</h2>
-        <p>Section 1 — Work Preparation. Supply Chain &amp; Finance complete Section 2 after submission.</p>
+        <p>Section 1 — Work Preparation. Complete the form and submit for approval, or save as a draft to finish later.</p>
     </div>
 
     <div class="form-steps">
         <div class="fs active">
             <span class="fs-num">1</span>
-            Work Preparation
+            Work Prep
         </div>
         <div class="fs">
             <span class="fs-num">2</span>
-            Supply Chain Review
+            JF Sign-off
         </div>
         <div class="fs">
             <span class="fs-num">3</span>
-            Finance Sign-off
+            LJ Sign-off
         </div>
         <div class="fs">
             <span class="fs-num">4</span>
+            Cost Impact
+        </div>
+        <div class="fs">
+            <span class="fs-num">5</span>
+            SG Sign-off
+        </div>
+        <div class="fs">
+            <span class="fs-num">6</span>
             MD Approval
         </div>
     </div>
@@ -144,8 +175,9 @@
         </div>
     }
 
-    <form asp-action="Create" method="post" enctype="multipart/form-data">
+    <form asp-action="Create" method="post" enctype="multipart/form-data" id="createForm">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="submitAction" id="submitAction" value="submit" />
 
         <div class="section-label">Part details</div>
         <div class="form-card">
@@ -180,7 +212,7 @@
 
                 <div class="field">
                     <label>Quantity *</label>
-                    <input asp-for="Quantity" type="number" min="1" placeholder="0" />
+                    <input asp-for="Quantity" placeholder="e.g. 50 per week, batch of 200" />
                     <span asp-validation-for="Quantity" class="field-error"></span>
                 </div>
 
@@ -195,6 +227,53 @@
                 </div>
 
             </div>
+        </div>
+
+        <div class="section-label">Quality &amp; compliance</div>
+        <div class="form-card">
+
+            <!-- PPAP toggle -->
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    PPAP Required
+                    <small>Production Part Approval Process required for this part</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="ppapToggle" asp-for="PpapRequired" />
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="sub-fields" id="ppapFields">
+                <div class="field">
+                    <label>PPAP Number</label>
+                    <input name="ppapNumber" placeholder="Enter PPAP reference number" />
+                </div>
+                <div class="field">
+                    <label>Concession Number</label>
+                    <input name="concessionNumber" placeholder="Enter concession number (if applicable)" />
+                </div>
+            </div>
+
+            <!-- Special packing toggle -->
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    Special Packing Required
+                    <small>Non-standard packaging or handling instructions apply</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="packingToggle" />
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="sub-fields" id="packingFields">
+                <div class="field">
+                    <label>Packing details</label>
+                    <textarea name="specialPackingDetails" rows="3"
+                              placeholder="Describe the special packing requirements…"></textarea>
+                </div>
+                <input type="hidden" name="specialPackingRequired" id="specialPackingRequired" value="false" />
+            </div>
+
         </div>
 
         <div class="section-label">Reason for request</div>
@@ -232,13 +311,18 @@
 
         <div class="submit-row">
             <a class="btn-ghost" asp-controller="Home" asp-action="Index">Cancel</a>
-            <button type="submit" class="btn-primary">
-                Submit Request
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="12 5 19 12 12 19"/>
-                </svg>
-            </button>
+            <div class="submit-actions">
+                <button type="button" class="btn-ghost" onclick="saveDraft()">
+                    Save as Draft
+                </button>
+                <button type="button" class="btn-primary" onclick="submitRequest()">
+                    Submit for Approval
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
     </form>
@@ -311,15 +395,39 @@
             if (!e.target.closest('.part-wrap')) suggBox.style.display = 'none';
         });
 
-        document.querySelector('form').addEventListener('submit', e => {
+        // PPAP toggle
+        const ppapToggle = document.getElementById('ppapToggle');
+        const ppapFields = document.getElementById('ppapFields');
+        ppapToggle.addEventListener('change', () => {
+            ppapFields.classList.toggle('visible', ppapToggle.checked);
+        });
+
+        // Special packing toggle
+        const packingToggle = document.getElementById('packingToggle');
+        const packingFields = document.getElementById('packingFields');
+        const packingHidden = document.getElementById('specialPackingRequired');
+        packingToggle.addEventListener('change', () => {
+            const on = packingToggle.checked;
+            packingFields.classList.toggle('visible', on);
+            packingHidden.value = on ? 'true' : 'false';
+        });
+
+        function saveDraft() {
+            document.getElementById('submitAction').value = 'draft';
+            document.getElementById('createForm').submit();
+        }
+
+        function submitRequest() {
             if (!validPartSelected) {
-                e.preventDefault();
                 SiteModal.alert(
                     'Please select a valid SAP part number from the dropdown suggestions before submitting.',
                     'Invalid Part Number'
                 );
+                return;
             }
-        });
+            document.getElementById('submitAction').value = 'submit';
+            document.getElementById('createForm').submit();
+        }
 
         // File upload zone
         const fileZone     = document.getElementById('fileZone');
@@ -354,7 +462,7 @@
                 };
                 reader.readAsDataURL(file);
             } else if (file.type === 'application/pdf') {
-                preview.innerHTML = `<div style="font-size:12px;color:var(--text2);margin-top:6px;">📄 ${file.name} (PDF)</div>`;
+                preview.innerHTML = `<div style="font-size:12px;color:var(--text2);margin-top:6px;">PDF: ${file.name}</div>`;
             }
         }
     </script>

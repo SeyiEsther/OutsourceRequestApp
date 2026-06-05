@@ -4,6 +4,7 @@ using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
 using OutsourceRequestApp.Services;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -13,11 +14,13 @@ namespace OutsourceRequestApp.Controllers
     {
         private readonly AppDbContext _db;
         private readonly EmailService _email;
+        private readonly IAuditLogService _audit;
 
-        public AdminController(AppDbContext db, EmailService email)
+        public AdminController(AppDbContext db, EmailService email, IAuditLogService audit)
         {
             _db    = db;
             _email = email;
+            _audit = audit;
         }
 
         // ----------------------------------------------------------------
@@ -58,7 +61,8 @@ namespace OutsourceRequestApp.Controllers
             ViewBag.SmtpFromName  = Get("SmtpFromName", "Outsource Portal");
             ViewBag.EmailDomain   = Get("CompanyEmailDomain");
             ViewBag.ReminderHours = Get("ReminderHours", "24");
-            ViewBag.AdminUsers    = Get("AdminUsers");
+            ViewBag.AdminUsers       = Get("AdminUsers");
+            ViewBag.CostImpactEmail  = Get("CostImpactEmail");
 
             return View();
         }
@@ -168,7 +172,7 @@ namespace OutsourceRequestApp.Controllers
                 RequestId     = 0,
                 PartNumber    = "TEST-001",
                 SapDescription = "Test Part",
-                Quantity      = 1,
+                Quantity      = "1",
                 CreatedAt     = DateTime.Now,
                 Reason        = "This is a test email from the Outsource Portal."
             };
@@ -182,6 +186,71 @@ namespace OutsourceRequestApp.Controllers
             _ = Task.Run(() => _email.SendToApprover(fakeReq, fakeApprover));
 
             TempData["Success"] = $"Test email sent to {fakeApprover.Email}";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ----------------------------------------------------------------
+        // POST: /Admin/SaveCostImpactEmail
+        // ----------------------------------------------------------------
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveCostImpactEmail(string costImpactEmail)
+        {
+            if (!await IsAdminAsync()) return StatusCode(403, "Access denied.");
+
+            var s = await _db.AppSettings.FirstOrDefaultAsync(x => x.SettingKey == "CostImpactEmail");
+            if (s == null) { s = new AppSetting { SettingKey = "CostImpactEmail" }; _db.AppSettings.Add(s); }
+            s.SettingValue = costImpactEmail ?? "";
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = "Cost impact email address saved.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ----------------------------------------------------------------
+        // GET: /Admin/AuditLog?requestId=...
+        // ----------------------------------------------------------------
+        public async Task<IActionResult> AuditLog(int? requestId)
+        {
+            if (!await IsAdminAsync()) return StatusCode(403, "Access denied.");
+
+            var query = _db.OutsourceRequestAuditLogs.AsQueryable();
+            if (requestId.HasValue)
+                query = query.Where(l => l.RequestId == requestId.Value);
+
+            var logs = await query
+                .OrderByDescending(l => l.Timestamp)
+                .Take(500)
+                .ToListAsync();
+
+            ViewBag.RequestId = requestId;
+            return View(logs);
+        }
+
+        // ----------------------------------------------------------------
+        // POST: /Admin/ResetStatus
+        // ----------------------------------------------------------------
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetStatus(int requestId, string newStatus)
+        {
+            if (!await IsAdminAsync()) return StatusCode(403, "Access denied.");
+
+            var req = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == requestId);
+            if (req == null)
+            {
+                TempData["Error"] = $"Request {requestId} not found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var from = req.Status;
+            req.Status = newStatus;
+            await _db.SaveChangesAsync();
+
+            await _audit.LogAsync(requestId, User.Identity?.Name ?? "Admin",
+                "Admin status reset", from, newStatus);
+
+            TempData["Success"] = $"OSR-{requestId:000000} status changed from {from} to {newStatus}.";
             return RedirectToAction(nameof(Index));
         }
 

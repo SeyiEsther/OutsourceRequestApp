@@ -1,0 +1,229 @@
+@model OutsourceRequestApp.Models.OutsourceRequest
+@using OutsourceRequestApp.Models
+@{
+    Layout = null;
+    var roles   = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
+    var jfRole  = roles.FirstOrDefault(r => r.RoleKey == "WorkPrepManager");
+    var ljRole  = roles.FirstOrDefault(r => r.RoleKey == "ProductionManager");
+    var sgRole  = roles.FirstOrDefault(r => r.RoleKey == "SupplyChainManager");
+    var mdRole  = roles.FirstOrDefault(r => r.RoleKey == "ManagingDirector");
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>@(Model.RequestNumber ?? $"OSR-{Model.RequestId:000000}")</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: Arial, sans-serif; font-size: 12px; color: #000; background: #fff; padding: 20mm; }
+h1 { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+.ref { font-size: 11px; color: #555; margin-bottom: 20px; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+.company { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; }
+.company span { color: #c00; }
+.section { margin-bottom: 18px; }
+.section-title { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .08em; color: #555; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 10px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+.field dt { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #777; margin-bottom: 2px; }
+.field dd { font-size: 12px; border-bottom: 1px solid #ddd; padding-bottom: 4px; min-height: 20px; }
+.reason-box { border: 1px solid #ccc; border-radius: 4px; padding: 10px; min-height: 60px; font-size: 12px; line-height: 1.6; }
+.sign-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 10px; }
+.sign-box { border: 1px solid #ccc; border-radius: 4px; padding: 10px 12px; }
+.sign-title { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #555; margin-bottom: 6px; }
+.sign-name { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+.sign-line { border-top: 1px solid #999; margin-top: 24px; padding-top: 4px; font-size: 10px; color: #777; }
+.cost-table { width: 100%; border-collapse: collapse; }
+.cost-table th { text-align: left; font-size: 10px; font-weight: bold; text-transform: uppercase; color: #555; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+.cost-table td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 12px; }
+.cost-table tfoot td { font-weight: bold; border-top: 1px solid #ccc; }
+.badge { display:inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; background: #f0f0f0; color: #333; }
+.badge-approved { background: #d4edda; color: #155724; }
+.badge-rejected { background: #f8d7da; color: #721c24; }
+@@media print {
+    body { padding: 12mm; }
+    @@page { margin: 10mm; }
+    button { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="company">RITTAL<span>-CSM</span></div>
+        <div style="font-size:11px;color:#555;margin-top:2px;">Outsource Request Form</div>
+    </div>
+    <div style="text-align:right;">
+        <div style="font-size:16px;font-weight:bold;">@(Model.RequestNumber ?? $"OSR-{Model.RequestId:000000}")</div>
+        <div class="badge @RequestStatus.BadgeClass(Model.Status)" style="margin-top:4px;">@RequestStatus.Label(Model.Status)</div>
+        <div style="font-size:10px;color:#777;margin-top:4px;">Printed @DateTime.Now.ToString("dd MMM yyyy HH:mm")</div>
+    </div>
+</div>
+
+<!-- Part details -->
+<div class="section">
+    <div class="section-title">Part Details</div>
+    <div class="grid">
+        <dl class="field"><dt>Part Number</dt><dd style="font-family:monospace">@Model.PartNumber</dd></dl>
+        <dl class="field"><dt>SAP Description</dt><dd>@(Model.SapDescription ?? "—")</dd></dl>
+        <dl class="field"><dt>Drawing Number</dt><dd style="font-family:monospace">@(Model.DrawingNumber ?? "—")</dd></dl>
+        <dl class="field"><dt>Quantity</dt><dd>@Model.Quantity</dd></dl>
+        <dl class="field"><dt>Start Date</dt><dd>@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("dd MMM yyyy") : "—")</dd></dl>
+        <dl class="field"><dt>End Date</dt><dd>@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("dd MMM yyyy") : "—")</dd></dl>
+        <dl class="field"><dt>PPAP Required</dt><dd>@(Model.PpapRequired.HasValue ? (Model.PpapRequired.Value ? "Yes" : "No") : "—")</dd></dl>
+        @if (!string.IsNullOrEmpty(Model.PPAPNumber))
+        {
+            <dl class="field"><dt>PPAP Number</dt><dd>@Model.PPAPNumber</dd></dl>
+        }
+        @if (!string.IsNullOrEmpty(Model.ConcessionNumber))
+        {
+            <dl class="field"><dt>Concession Number</dt><dd>@Model.ConcessionNumber</dd></dl>
+        }
+        <dl class="field"><dt>Special Packing</dt><dd>@(Model.SpecialPackingRequired.HasValue ? (Model.SpecialPackingRequired.Value ? "Yes" : "No") : "—")</dd></dl>
+    </div>
+    @if (!string.IsNullOrEmpty(Model.SpecialPackingDetails))
+    {
+        <dl class="field" style="margin-top:8px;"><dt>Packing Details</dt><dd>@Model.SpecialPackingDetails</dd></dl>
+    }
+</div>
+
+<!-- Reason -->
+<div class="section">
+    <div class="section-title">Reason for Outsourcing</div>
+    <div class="reason-box">@Model.Reason</div>
+</div>
+
+<!-- Submitted by -->
+<div class="section">
+    <div class="section-title">Submitted By</div>
+    <div class="grid">
+        <dl class="field"><dt>Username</dt><dd style="font-family:monospace">@Model.CreatedByUsername</dd></dl>
+        <dl class="field"><dt>Date</dt><dd>@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</dd></dl>
+    </div>
+</div>
+
+<!-- Cost impact -->
+@if (Model.CostLines != null && Model.CostLines.Any())
+{
+    <div class="section">
+        <div class="section-title">Cost Impact Analysis</div>
+        <table class="cost-table">
+            <thead><tr><th>Description</th><th>In-house (&#163;)</th><th>Outsource (&#163;)</th><th>Difference (&#163;)</th></tr></thead>
+            <tbody>
+                @foreach (var line in Model.CostLines)
+                {
+                    <tr>
+                        <td>@line.Description</td>
+                        <td>@line.InhouseCost.ToString("N2")</td>
+                        <td>@line.OutsourceCost.ToString("N2")</td>
+                        <td>@line.Total.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot><tr>
+                <td colspan="3">Total</td>
+                <td>@Model.CostLines.Sum(l => l.Total).ToString("N2")</td>
+            </tr></tfoot>
+        </table>
+        @if (!string.IsNullOrEmpty(Model.CostComments))
+        {
+            <p style="font-size:11px;color:#555;margin-top:8px;font-style:italic;">Notes: @Model.CostComments</p>
+        }
+    </div>
+}
+
+<!-- Signatures -->
+<div class="section">
+    <div class="section-title">Authorisation Signatures</div>
+    <div class="sign-grid">
+        <div class="sign-box">
+            <div class="sign-title">Step 1 &#8212; Work Preparation</div>
+            <div class="sign-name">@Model.CreatedByUsername</div>
+            <div style="font-size:10px;color:#777;">@Model.CreatedAt.ToString("dd MMM yyyy")</div>
+            <div class="sign-line">Submitted</div>
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">Step 2 &#8212; @(jfRole?.RoleDisplayName ?? "Work Prep Manager")</div>
+            <div class="sign-name">@(jfRole?.FullName ?? "—")</div>
+            @if (Model.JFSignedDate.HasValue)
+            {
+                <div style="font-size:10px;color:#777;">@Model.JFSignedDate.Value.ToString("dd MMM yyyy")</div>
+                <div class="sign-line">Signed by @Model.JFSignedBy</div>
+            }
+            else
+            {
+                <div class="sign-line">Pending signature</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">Step 3 &#8212; @(ljRole?.RoleDisplayName ?? "Production Manager")</div>
+            <div class="sign-name">@(ljRole?.FullName ?? "—")</div>
+            @if (Model.LJSignedDate.HasValue)
+            {
+                <div style="font-size:10px;color:#777;">@Model.LJSignedDate.Value.ToString("dd MMM yyyy")</div>
+                <div class="sign-line">Signed by @Model.LJSignedBy</div>
+            }
+            else
+            {
+                <div class="sign-line">Pending signature</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">Step 4 &#8212; Cost Impact</div>
+            <div class="sign-name">@(sgRole?.FullName ?? "Supply Chain")</div>
+            @if (Model.CostEnteredAt.HasValue)
+            {
+                <div style="font-size:10px;color:#777;">@Model.CostEnteredAt.Value.ToString("dd MMM yyyy")</div>
+                <div class="sign-line">Entered by @Model.CostEnteredBy</div>
+            }
+            else
+            {
+                <div class="sign-line">Pending entry</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">Step 5 &#8212; @(sgRole?.RoleDisplayName ?? "Supply Chain Manager")</div>
+            <div class="sign-name">@(sgRole?.FullName ?? "—")</div>
+            @if (Model.SGSignedDate.HasValue)
+            {
+                <div style="font-size:10px;color:#777;">@Model.SGSignedDate.Value.ToString("dd MMM yyyy")</div>
+                <div class="sign-line">Signed by @Model.SGSignedBy</div>
+            }
+            else
+            {
+                <div class="sign-line">Pending signature</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">Step 6 &#8212; @(mdRole?.RoleDisplayName ?? "Managing Director")</div>
+            <div class="sign-name">@(mdRole?.FullName ?? "—")</div>
+            @if (Model.MDSignedDate.HasValue)
+            {
+                <div style="font-size:10px;color:#777;">@Model.MDSignedDate.Value.ToString("dd MMM yyyy")</div>
+                <div class="sign-line">@(Model.Status == RequestStatus.Approved ? "AUTHORISED" : "Reviewed") by @Model.MDSignedBy</div>
+            }
+            else
+            {
+                <div class="sign-line">Pending approval</div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (Model.Status == RequestStatus.Rejected && !string.IsNullOrEmpty(Model.RejectionReason))
+{
+    <div class="section">
+        <div class="section-title" style="color:#c00;">Rejection</div>
+        <p><strong>Rejected by:</strong> @Model.RejectedBy on @Model.RejectedAt?.ToString("dd MMM yyyy HH:mm")</p>
+        <p style="margin-top:4px;"><strong>Reason:</strong> @Model.RejectionReason</p>
+    </div>
+}
+
+<div style="margin-top:24px;text-align:center;">
+    <button onclick="window.print()" style="padding:8px 20px;background:#c00;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+        Print / Save PDF
+    </button>
+</div>
+
+</body>
+</html>

@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 // Main application database
 builder.Services.AddDbContext<AppDbContext>(options =>

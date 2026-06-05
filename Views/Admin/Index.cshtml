@@ -4,9 +4,10 @@
     ViewData["Title"] = "Admin Panel";
     var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
     ApproverRole? GetRole(string key) => roles.FirstOrDefault(r => r.RoleKey == key);
-    var sc = GetRole("SC");
-    var finance = GetRole("Finance");
-    var md = GetRole("MD");
+    var wpm     = GetRole("WorkPrepManager");
+    var prodMgr = GetRole("ProductionManager");
+    var scMgr   = GetRole("SupplyChainManager");
+    var mdRole  = GetRole("ManagingDirector");
 }
 
 <style>
@@ -140,13 +141,14 @@
     <div class="role-grid">
 
         @foreach (var (roleKey, displayName, roleVar) in new[] {
-            ("SC",      "Supply Chain Manager", sc),
-            ("Finance", "Finance Director",     finance),
-            ("MD",      "Managing Director",    md)
+            ("WorkPrepManager",    "Work Prep Manager (JF)",      wpm),
+            ("ProductionManager",  "Production Manager (LJ)",     prodMgr),
+            ("SupplyChainManager", "Supply Chain Manager (SG)",   scMgr),
+            ("ManagingDirector",   "Managing Director (MD)",      mdRole)
         })
         {
             <div class="role-card">
-                <div class="rc-stage">Stage @(roleKey == "SC" ? "1" : roleKey == "Finance" ? "2" : "3")</div>
+                <div class="rc-stage">@(roleKey == "WorkPrepManager" ? "Step 2" : roleKey == "ProductionManager" ? "Step 3" : roleKey == "SupplyChainManager" ? "Steps 4-5" : "Step 6")</div>
                 <div class="rc-title">@displayName</div>
                 <form asp-action="SaveRole" method="post">
                     @Html.AntiForgeryToken()
@@ -234,6 +236,62 @@
             @Html.AntiForgeryToken()
             <button type="submit" class="btn-ghost" style="font-size:12px;">Send test email to myself</button>
         </form>
+    </div>
+
+    <!-- Cost Impact Email -->
+    <div class="admin-label">Cost impact notification</div>
+    <div class="smtp-card">
+        <div class="smtp-hint">
+            When a request reaches Step 4 (Cost Impact), this email address receives the notification.
+            Leave blank to send to the Supply Chain Manager's configured email.
+        </div>
+        <form asp-action="SaveCostImpactEmail" method="post">
+            @Html.AntiForgeryToken()
+            <div class="field">
+                <label>Cost impact email</label>
+                <input name="costImpactEmail" type="email" value="@ViewBag.CostImpactEmail" placeholder="sc@yourcompany.com" />
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Status Reset Tool -->
+    <div class="admin-label">Status reset tool</div>
+    <div class="smtp-card">
+        <div class="smtp-hint">Use to manually correct a request's status. All resets are recorded in the audit log.</div>
+        <form asp-action="ResetStatus" method="post">
+            @Html.AntiForgeryToken()
+            <div class="smtp-grid">
+                <div class="field">
+                    <label>Request ID</label>
+                    <input name="requestId" type="number" min="1" placeholder="e.g. 42" />
+                </div>
+                <div class="field">
+                    <label>New status</label>
+                    <select name="newStatus">
+                        <option value="Draft">Draft</option>
+                        <option value="Submitted">Submitted (awaiting JF)</option>
+                        <option value="AwaitingLJApproval">Awaiting LJ Approval</option>
+                        <option value="AwaitingCostImpact">Awaiting Cost Impact</option>
+                        <option value="Finance_Pending">Finance Pending (awaiting SG)</option>
+                        <option value="MD_Pending">MD Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">Reset Status</button>
+            </div>
+        </form>
+        <div style="margin-top:12px;">
+            <a class="btn-ghost" style="font-size:12px;" asp-controller="Admin" asp-action="AuditLog">
+                View audit log &#8594;
+            </a>
+        </div>
     </div>
 
     <!-- Admin Users -->
