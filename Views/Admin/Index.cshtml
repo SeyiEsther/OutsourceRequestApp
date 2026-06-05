@@ -1,9 +1,8 @@
-﻿@using OutsourceRequestApp.Models
+@using OutsourceRequestApp.Models
 
 @{
     ViewData["Title"] = "Admin Panel";
     var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
-
     ApproverRole? GetRole(string key) => roles.FirstOrDefault(r => r.RoleKey == key);
     var sc = GetRole("SC");
     var finance = GetRole("Finance");
@@ -11,248 +10,147 @@
 }
 
 <style>
-    .admin-wrap {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 40px 24px 60px;
-    }
+    .admin-pg { max-width: 960px; margin: 0 auto; padding: 40px 24px 60px; }
 
-    .pg-title {
-        font-size: 22px;
-        font-weight: 500;
-        margin-bottom: 6px;
-    }
-
-    .pg-sub {
-        font-size: 13px;
-        color: var(--muted);
-        margin-bottom: 32px;
-    }
+    .pg-head { margin-bottom: 32px; }
+    .pg-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .pg-head p  { font-size: 13px; color: var(--text2); }
 
     .success-banner {
+        display: flex; align-items: center; gap: 10px;
         background: rgba(34,197,94,.08);
-        border: 1px solid rgba(34,197,94,.25);
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 13px;
-        color: #4ade80;
-        margin-bottom: 20px;
+        border: 1px solid rgba(34,197,94,.22);
+        border-radius: 9px; padding: 12px 16px;
+        font-size: 13px; color: #4ade80; margin-bottom: 22px;
     }
 
-    .admin-section-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: .08em;
-        color: var(--muted);
-        margin-bottom: 14px;
-        margin-top: 28px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .admin-label {
+        font-size: 10px; text-transform: uppercase;
+        letter-spacing: .1em; color: var(--text3); font-weight: 600;
+        margin-bottom: 14px; margin-top: 32px;
+        display: flex; align-items: center; gap: 10px;
     }
+    .admin-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-        .admin-section-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
+    /* Role grid */
     .role-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .role-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 22px;
-    }
-
-    .role-stage {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: .08em;
-        color: var(--red);
-        margin-bottom: 6px;
-        font-weight: 600;
-    }
-
-    .role-title {
-        font-size: 14px;
-        font-weight: 500;
-        margin-bottom: 16px;
-    }
-
-    .field {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        margin-bottom: 12px;
-    }
-
-        .field label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            color: var(--muted);
-            font-weight: 500;
-        }
-
-        .field input {
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            padding: 8px 11px;
-            font-family: var(--font);
-            font-size: 13px;
-            width: 100%;
-        }
-
-            .field input:focus {
-                border-color: var(--red);
-                outline: none;
-            }
-
-    .btn-save {
-        padding: 8px 20px;
-        background: var(--red);
-        border: none;
-        border-radius: 7px;
-        color: #fff;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: var(--font);
-        margin-top: 4px;
-    }
-
-        .btn-save:hover {
-            background: var(--red-dark);
-        }
-
-    .btn-ghost {
-        padding: 8px 20px;
-        background: transparent;
-        border: 1px solid var(--border2);
-        border-radius: 7px;
-        color: var(--muted);
-        font-size: 12px;
-        cursor: pointer;
-        font-family: var(--font);
-    }
-
-        .btn-ghost:hover {
-            color: var(--text);
-            background: var(--surface2);
-        }
-
-    .smtp-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 22px;
-    }
-
-    .smtp-hint {
-        font-size: 12px;
-        color: var(--muted);
-        margin-bottom: 16px;
-        line-height: 1.6;
-    }
-
-    .smtp-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: grid; grid-template-columns: 1fr 1fr;
         gap: 14px;
     }
+    .role-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 12px; padding: 20px 22px;
+    }
+    .rc-stage {
+        font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
+        color: var(--accent); font-weight: 600; margin-bottom: 4px;
+    }
+    .rc-title { font-size: 14px; font-weight: 600; margin-bottom: 18px; }
 
-    .whitelist-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 22px;
+    .field {
+        display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px;
+    }
+    .field label {
+        font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+        color: var(--text2); font-weight: 600;
+    }
+    .field input, .field select {
+        background: var(--bg); color: var(--text);
+        border: 1px solid var(--border2); border-radius: 8px;
+        padding: 8px 11px; font-family: var(--font); font-size: 13px; width: 100%;
+    }
+    .field input:focus, .field select:focus {
+        border-color: var(--accent); outline: none;
+        box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
+    .btn-save {
+        padding: 8px 18px; background: var(--accent); border: none;
+        border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700;
+        cursor: pointer; font-family: var(--font); transition: background .15s;
+    }
+    .btn-save:hover { background: var(--accent-d); }
+
+    /* SMTP */
+    .smtp-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 12px; padding: 22px;
+    }
+    .smtp-hint {
+        font-size: 12px; color: var(--text2);
+        margin-bottom: 18px; line-height: 1.65;
+        background: var(--card2); border-radius: 8px;
+        padding: 12px 14px; border: 1px solid var(--border);
+    }
+    .smtp-hint code { font-family: var(--mono); font-size: 11px; color: var(--text); }
+    .smtp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+
+    /* Admin users */
+    .wl-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 12px; padding: 22px;
+    }
+    .wl-hint { font-size: 13px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
     .wl-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 0; border-bottom: 1px solid var(--border);
     }
-
-        .wl-item:last-child {
-            border-bottom: none;
-        }
-
-    .wl-name {
-        font-family: var(--mono);
-        font-size: 12px;
-    }
-
+    .wl-item:last-child { border-bottom: none; }
+    .wl-name { font-family: var(--mono); font-size: 12px; }
     .wl-remove {
-        font-size: 12px;
-        color: #f87171;
-        cursor: pointer;
-        background: none;
-        border: none;
-        font-family: var(--font);
+        font-size: 12px; color: #f87171;
+        cursor: pointer; background: none; border: none; font-family: var(--font);
+        padding: 4px 8px; border-radius: 6px; transition: background .15s;
     }
-
-    .wl-add {
-        display: flex;
-        gap: 8px;
-        margin-top: 14px;
+    .wl-remove:hover { background: rgba(239,68,68,.1); }
+    .wl-add { display: flex; gap: 8px; margin-top: 14px; }
+    .wl-add input {
+        flex: 1; background: var(--bg); color: var(--text);
+        border: 1px solid var(--border2); border-radius: 8px;
+        padding: 8px 11px; font-family: var(--font); font-size: 13px;
     }
+    .wl-add input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-dim); }
 
-        .wl-add input {
-            flex: 1;
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            padding: 8px 11px;
-            font-family: var(--font);
-            font-size: 13px;
-        }
-
-            .wl-add input:focus {
-                border-color: var(--red);
-                outline: none;
-            }
+    @@media (max-width: 768px) {
+        .role-grid  { grid-template-columns: 1fr !important; }
+        .smtp-grid  { grid-template-columns: 1fr !important; }
+    }
 </style>
 
-<div class="admin-wrap">
+<div class="admin-pg">
 
-    <div class="pg-title">Admin Panel</div>
-    <div class="pg-sub">Configure approvers, email settings, and admin access</div>
+    <div class="pg-head">
+        <h2>Admin Panel</h2>
+        <p>Configure approvers, email settings, and admin access</p>
+    </div>
 
     @if (TempData["Success"] != null)
     {
-        <div class="success-banner">✓ @TempData["Success"]</div>
+        <div class="success-banner" id="success-banner">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            @TempData["Success"]
+        </div>
     }
 
-    <!-- APPROVER ROLES -->
-    <div class="admin-section-label">Approval role assignments</div>
+    <!-- Approver Roles -->
+    <div class="admin-label">Approval role assignments</div>
     <div class="role-grid">
 
         @foreach (var (roleKey, displayName, roleVar) in new[] {
-                ("SC",      "Supply Chain Manager",  sc),
-                ("Finance", "Finance Director",      finance),
-                ("MD",      "Managing Director",     md)
-                })
+            ("SC",      "Supply Chain Manager", sc),
+            ("Finance", "Finance Director",     finance),
+            ("MD",      "Managing Director",    md)
+        })
         {
             <div class="role-card">
-                <div class="role-stage">Stage @(roleKey == "SC" ? "1" : roleKey == "Finance" ? "2" : "3")</div>
-                <div class="role-title">@displayName</div>
+                <div class="rc-stage">Stage @(roleKey == "SC" ? "1" : roleKey == "Finance" ? "2" : "3")</div>
+                <div class="rc-title">@displayName</div>
                 <form asp-action="SaveRole" method="post">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="roleKey" value="@roleKey" />
+                    <input type="hidden" name="roleKey"         value="@roleKey" />
                     <input type="hidden" name="roleDisplayName" value="@displayName" />
                     <div class="field">
                         <label>Windows username</label>
@@ -271,20 +169,20 @@
             </div>
         }
 
-        <!-- REMINDER INTERVAL -->
+        <!-- Reminder interval -->
         <div class="role-card">
-            <div class="role-stage">Reminders</div>
-            <div class="role-title">Email Reminder Interval</div>
-            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+            <div class="rc-stage">Reminders</div>
+            <div class="rc-title">Email Reminder Interval</div>
+            <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.65;">
                 Send a chase email to the current approver if they haven't acted after this many hours.
             </p>
             <form asp-action="SaveSettings" method="post">
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="smtpHost" value="@ViewBag.SmtpHost" />
-                <input type="hidden" name="smtpPort" value="@ViewBag.SmtpPort" />
-                <input type="hidden" name="smtpFrom" value="@ViewBag.SmtpFrom" />
+                <input type="hidden" name="smtpHost"     value="@ViewBag.SmtpHost" />
+                <input type="hidden" name="smtpPort"     value="@ViewBag.SmtpPort" />
+                <input type="hidden" name="smtpFrom"     value="@ViewBag.SmtpFrom" />
                 <input type="hidden" name="smtpFromName" value="@ViewBag.SmtpFromName" />
-                <input type="hidden" name="emailDomain" value="@ViewBag.EmailDomain" />
+                <input type="hidden" name="emailDomain"  value="@ViewBag.EmailDomain" />
                 <div class="field">
                     <label>Hours before reminder</label>
                     <input name="reminderHours" type="number" min="1" value="@(ViewBag.ReminderHours ?? "24")" />
@@ -295,29 +193,29 @@
 
     </div>
 
-    <!-- SMTP SETTINGS -->
-    <div class="admin-section-label">Email / SMTP settings</div>
+    <!-- SMTP Settings -->
+    <div class="admin-label">Email / SMTP settings</div>
     <div class="smtp-card">
-        <p class="smtp-hint">
+        <div class="smtp-hint">
             Ask IT for your internal SMTP relay address. On most company networks this is something like
-            <code style="font-family:var(--mono);font-size:11px;color:var(--text)">smtp.yourcompany.local</code> on port 25.
+            <code>smtp.yourcompany.local</code> on port 25.
             Leave credentials blank if your network uses Windows integrated auth (most do).
-        </p>
+        </div>
         <form asp-action="SaveSettings" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="reminderHours" value="@ViewBag.ReminderHours" />
             <div class="smtp-grid">
                 <div class="field">
                     <label>SMTP server</label>
-                    <input name="smtpHost" value="@ViewBag.SmtpHost" placeholder="smtp.yourcompany.local" />
+                    <input name="smtpHost"     value="@ViewBag.SmtpHost"     placeholder="smtp.yourcompany.local" />
                 </div>
                 <div class="field">
                     <label>Port</label>
-                    <input name="smtpPort" value="@(ViewBag.SmtpPort ?? "25")" placeholder="25" />
+                    <input name="smtpPort"     value="@(ViewBag.SmtpPort ?? "25")" placeholder="25" />
                 </div>
                 <div class="field">
                     <label>From address</label>
-                    <input name="smtpFrom" value="@ViewBag.SmtpFrom" placeholder="outsource-portal@yourcompany.com" />
+                    <input name="smtpFrom"     value="@ViewBag.SmtpFrom"     placeholder="outsource-portal@yourcompany.com" />
                 </div>
                 <div class="field">
                     <label>From display name</label>
@@ -325,32 +223,30 @@
                 </div>
                 <div class="field">
                     <label>Company email domain</label>
-                    <input name="emailDomain" value="@ViewBag.EmailDomain" placeholder="yourcompany.com" />
+                    <input name="emailDomain"  value="@ViewBag.EmailDomain"  placeholder="yourcompany.com" />
                 </div>
             </div>
-            <div style="display:flex;gap:10px;margin-top:8px;">
+            <div class="form-actions">
                 <button type="submit" class="btn-save">Save settings</button>
             </div>
         </form>
-        <form asp-action="TestEmail" method="post" style="margin-top:10px;">
+        <form asp-action="TestEmail" method="post" style="margin-top:12px;">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn-ghost">Send test email to myself</button>
+            <button type="submit" class="btn-ghost" style="font-size:12px;">Send test email to myself</button>
         </form>
     </div>
 
-    <!-- ADMIN USERS -->
-    <div class="admin-section-label">Admin users</div>
-    <div class="whitelist-card">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
-            These Windows usernames have access to this Admin panel.
-        </p>
+    <!-- Admin Users -->
+    <div class="admin-label">Admin users</div>
+    <div class="wl-card">
+        <p class="wl-hint">These Windows usernames have access to this Admin panel.</p>
 
         @{
             var adminList = (ViewBag.AdminUsers as string ?? "")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(a => a.Trim())
-            .Where(a => !string.IsNullOrEmpty(a))
-            .ToList();
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim())
+                .Where(a => !string.IsNullOrEmpty(a))
+                .ToList();
         }
 
         @foreach (var admin in adminList)
@@ -370,8 +266,7 @@
             @Html.AntiForgeryToken()
             <div class="wl-add">
                 <input id="newAdminInput" placeholder="DOMAIN\username" />
-                <input type="hidden" id="adminUsersHidden" name="adminUsers"
-                       value="@ViewBag.AdminUsers" />
+                <input type="hidden" id="adminUsersHidden" name="adminUsers" value="@ViewBag.AdminUsers" />
                 <button type="submit" class="btn-save" onclick="appendAdmin()">Add</button>
             </div>
         </form>
@@ -391,17 +286,17 @@
         }
 
         // Auto-dismiss success banner after 3 s
-        const banner = document.querySelector('.success-banner');
+        const banner = document.getElementById('success-banner');
         if (banner) {
             setTimeout(() => {
                 banner.style.transition = 'opacity 0.5s, max-height 0.4s, margin 0.4s, padding 0.4s';
-                banner.style.opacity = '0';
-                banner.style.maxHeight = '0';
-                banner.style.margin = '0';
-                banner.style.padding = '0';
-                banner.style.overflow = 'hidden';
+                banner.style.opacity    = '0';
+                banner.style.maxHeight  = '0';
+                banner.style.overflow   = 'hidden';
+                banner.style.margin     = '0';
+                banner.style.padding    = '0';
                 setTimeout(() => banner.remove(), 500);
-            }, 3000);
+            }, 3500);
         }
     </script>
 }

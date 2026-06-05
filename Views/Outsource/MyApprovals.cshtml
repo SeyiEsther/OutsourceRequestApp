@@ -1,233 +1,168 @@
-﻿@using OutsourceRequestApp.Models
+@using OutsourceRequestApp.Models
 
 @{
     ViewData["Title"] = "My Approvals";
     var myRole = ViewBag.MyRole as ApproverRole;
-    var pending = ViewBag.Pending as List<OutsourceRequest> ?? new List<OutsourceRequest>();
+    var pending  = ViewBag.Pending as List<OutsourceRequest> ?? new List<OutsourceRequest>();
     int approved = (int)(ViewBag.Approved ?? 0);
     int rejected = (int)(ViewBag.Rejected ?? 0);
 }
 
 <style>
-    .profile-wrap {
-        max-width: 860px;
-        margin: 0 auto;
-        padding: 40px 24px 60px;
-    }
+    .approvals-pg { max-width: 860px; margin: 0 auto; padding: 40px 24px 60px; }
 
-    .profile-hero {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        margin-bottom: 32px;
+    /* Profile hero */
+    .role-hero {
+        display: flex; align-items: center; gap: 18px;
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 14px; padding: 24px;
+        margin-bottom: 24px;
     }
+    .role-avatar {
+        width: 52px; height: 52px; border-radius: 50%;
+        background: var(--accent-dim);
+        border: 2px solid rgba(230,57,70,0.3);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+    }
+    .role-name { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .role-sub  { font-size: 13px; color: var(--text2); margin-top: 3px; }
 
-    .profile-avatar {
-        width: 54px;
-        height: 54px;
-        border-radius: 50%;
-        background: rgba(227,6,19,.12);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--red);
-        flex-shrink: 0;
+    /* Stat strip */
+    .stat-strip {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 10px; margin-bottom: 28px;
     }
+    .stat-tile {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 10px; padding: 16px 18px;
+    }
+    .st-label {
+        font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
+        color: var(--text3); font-weight: 600; margin-bottom: 8px;
+    }
+    .st-val { font-family: var(--mono); font-size: 26px; font-weight: 600; }
 
-    .profile-name {
-        font-size: 20px;
-        font-weight: 500;
+    /* Queue */
+    .queue-head {
+        font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+        color: var(--text3); font-weight: 600; margin-bottom: 12px;
     }
-
-    .profile-sub {
-        font-size: 13px;
-        color: var(--muted);
-        margin-top: 3px;
-    }
-
-    .stat-pills {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 32px;
-    }
-
-    .sp {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 16px 20px;
-        flex: 1;
-        text-align: center;
-    }
-
-    .sp-val {
-        font-size: 26px;
-        font-weight: 400;
-        font-family: var(--mono);
-    }
-
-    .sp-label {
-        font-size: 11px;
-        color: var(--muted);
-        margin-top: 5px;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-    }
-
-    .queue-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: .08em;
-        color: var(--muted);
-        margin-bottom: 12px;
-        font-weight: 500;
-    }
-
-    .queue {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
+    .queue { display: flex; flex-direction: column; gap: 10px; }
 
     .queue-item {
-        background: var(--surface);
-        border: 1px solid rgba(227,6,19,.2);
-        border-radius: 10px;
-        padding: 18px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
+        background: var(--card);
+        border: 1px solid rgba(230,57,70,0.18);
+        border-radius: 12px; padding: 18px 20px;
+        display: flex; justify-content: space-between;
+        align-items: center; gap: 16px;
     }
+    .queue-item:hover { border-color: rgba(230,57,70,0.35); }
 
-    .qi-id {
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--muted);
-        margin-bottom: 4px;
-    }
-
-    .qi-part {
-        font-size: 13px;
-        font-weight: 500;
-    }
-
-    .qi-meta {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 3px;
-    }
-
-    .qi-age {
-        font-size: 11px;
-        margin-top: 5px;
-    }
-
-    .age-warn {
-        color: #fbbf24;
-    }
-
-    .age-over {
-        color: #f87171;
-    }
+    .qi-id   { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+    .qi-part { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    .qi-meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
+    .qi-age  { font-size: 11px; font-weight: 500; margin-top: 6px; }
+    .age-ok   { color: var(--text3); }
+    .age-warn { color: #fbbf24; }
+    .age-over { color: #f87171; }
 
     .btn-review {
-        padding: 8px 20px;
-        background: var(--red);
-        border: none;
-        border-radius: 7px;
-        color: #fff;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-block;
-        white-space: nowrap;
-        font-family: var(--font);
+        padding: 9px 18px;
+        background: var(--accent); border: none;
+        border-radius: 9px; color: #fff;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        text-decoration: none; display: inline-block;
+        white-space: nowrap; font-family: var(--font);
+        transition: background .15s;
+        flex-shrink: 0;
     }
+    .btn-review:hover { background: var(--accent-d); color: #fff; }
 
-        .btn-review:hover {
-            background: var(--red-dark);
-            color: #fff;
-        }
-
-    .no-role {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 40px;
-        text-align: center;
-        color: var(--muted);
+    /* Empty / no role */
+    .empty-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 14px; padding: 48px 32px;
+        text-align: center; color: var(--text2);
     }
+    .empty-card p { margin-bottom: 6px; }
+    .empty-card p:first-child { font-size: 16px; font-weight: 600; color: var(--text); }
 
-    .empty {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 40px;
-        text-align: center;
-        color: var(--muted);
+    .all-clear {
+        background: rgba(34,197,94,.07);
+        border: 1px solid rgba(34,197,94,.2);
+        border-radius: 12px; padding: 32px;
+        text-align: center; color: var(--text2);
+    }
+    .all-clear-ico {
+        width: 44px; height: 44px; border-radius: 50%;
+        background: rgba(34,197,94,.1);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 12px; font-size: 18px; color: var(--green);
+    }
+    .all-clear p { font-size: 14px; color: var(--green); font-weight: 500; }
+
+    @@media (max-width: 768px) {
+        .queue-item { flex-direction: column; align-items: flex-start; }
+        .role-hero  { flex-direction: column; text-align: center; }
     }
 </style>
 
-<div class="profile-wrap">
+<div class="approvals-pg">
 
     @if (myRole == null)
     {
-        <div class="no-role">
-            <p style="font-size:15px;margin-bottom:8px;">You are not assigned to an approval role.</p>
-            <p style="font-size:13px;">Contact an admin to be assigned as Supply Chain, Finance, or MD approver.</p>
+        <div class="empty-card">
+            <p>You are not assigned to an approval role.</p>
+            <p style="font-size:13px;margin-top:8px;">Contact an admin to be assigned as Supply Chain, Finance, or MD approver.</p>
         </div>
     }
     else
     {
         var initials = string.Join("", myRole.FullName.Split(' ').Take(2).Select(w => w[0]));
 
-        <div class="profile-hero">
-            <div class="profile-avatar">@initials</div>
+        <div class="role-hero">
+            <div class="role-avatar">@initials</div>
             <div>
-                <div class="profile-name">@myRole.FullName</div>
-                <div class="profile-sub">@myRole.RoleDisplayName · @myRole.Username</div>
+                <div class="role-name">@myRole.FullName</div>
+                <div class="role-sub">@myRole.RoleDisplayName · <span style="font-family:var(--mono);font-size:11px">@myRole.Username</span></div>
             </div>
         </div>
 
-        <div class="stat-pills">
-            <div class="sp">
-                <div class="sp-val" style="color:#fbbf24">@pending.Count</div>
-                <div class="sp-label">Awaiting your action</div>
+        <div class="stat-strip">
+            <div class="stat-tile">
+                <div class="st-label">Awaiting your action</div>
+                <div class="st-val" style="color:#fbbf24">@pending.Count</div>
             </div>
-            <div class="sp">
-                <div class="sp-val" style="color:#4ade80">@approved</div>
-                <div class="sp-label">Approved by you</div>
+            <div class="stat-tile">
+                <div class="st-label">Approved by you</div>
+                <div class="st-val" style="color:#4ade80">@approved</div>
             </div>
-            <div class="sp">
-                <div class="sp-val" style="color:#f87171">@rejected</div>
-                <div class="sp-label">Rejected</div>
+            <div class="stat-tile">
+                <div class="st-label">Rejected</div>
+                <div class="st-val" style="color:#f87171">@rejected</div>
             </div>
         </div>
-
-        <div class="queue-label">Waiting for your approval</div>
 
         @if (!pending.Any())
         {
-            <div class="empty">
-                <p>Nothing waiting for your approval right now.</p>
+            <div class="all-clear">
+                <div class="all-clear-ico">✓</div>
+                <p>All caught up — nothing awaiting your approval.</p>
             </div>
         }
         else
         {
+            <div class="queue-head">Waiting for your approval (@pending.Count)</div>
             <div class="queue">
                 @foreach (var r in pending)
                 {
                     var waiting = DateTime.Now - r.CreatedAt;
                     string waitStr = waiting.TotalDays >= 1
-                    ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
-                    : $"{waiting.Hours}h {waiting.Minutes}m";
-                    string ageClass = waiting.TotalDays >= 3 ? "age-over"
-                    : waiting.TotalDays >= 1 ? "age-warn" : "";
-                    string agePrefix = waiting.TotalDays >= 3 ? "⚠ Overdue — waiting " : "⏱ Waiting ";
+                        ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
+                        : $"{waiting.Hours}h {waiting.Minutes}m";
+                    string ageClass  = waiting.TotalDays >= 3 ? "age-over" : waiting.TotalDays >= 1 ? "age-warn" : "age-ok";
+                    string agePrefix = waiting.TotalDays >= 3 ? "⚠ Overdue — " : "Waiting ";
 
                     <div class="queue-item">
                         <div>
@@ -237,9 +172,7 @@
                             <div class="qi-age @ageClass">@agePrefix@waitStr</div>
                         </div>
                         <a class="btn-review"
-                           asp-controller="Outsource"
-                           asp-action="Track"
-                           asp-route-id="@r.RequestId">
+                           asp-controller="Outsource" asp-action="Track" asp-route-id="@r.RequestId">
                             Review →
                         </a>
                     </div>
