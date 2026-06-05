@@ -82,8 +82,7 @@
             transition: all 0.15s;
         }
 
-            .nav-link:hover,
-            .nav-link.active {
+            .nav-link:hover {
                 color: var(--text);
                 background: var(--surface2);
             }
@@ -277,6 +276,80 @@
                 resize: vertical;
             }
 
+        /* ACTIVE NAV INDICATOR */
+        .nav-link.active {
+            color: var(--text);
+            background: var(--surface2);
+            box-shadow: inset 0 -2px 0 0 var(--red);
+        }
+
+        /* MODAL OVERLAY */
+        .site-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(3px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s;
+        }
+
+        .site-overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .site-modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 14px;
+            padding: 28px 28px 22px;
+            max-width: 420px;
+            width: calc(100% - 48px);
+            transform: scale(0.96);
+            transition: transform 0.18s;
+        }
+
+        .site-overlay.visible .site-modal-box {
+            transform: scale(1);
+        }
+
+        .site-modal-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        .site-modal-msg {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.65;
+            margin-bottom: 24px;
+        }
+
+        .site-modal-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* PAGE PROGRESS BAR */
+        #page-progress {
+            position: fixed;
+            top: 0; left: 0;
+            height: 2px;
+            background: var(--red);
+            z-index: 999;
+            width: 0;
+            transition: width 0.25s ease, opacity 0.3s;
+            pointer-events: none;
+        }
+
         /* FOOTER */
         .site-footer {
             margin-top: 80px;
@@ -331,6 +404,7 @@
            PRINT — clean output for physical sign-off sheets
            ============================================================ */
         @@media print {
+            .site-overlay, #page-progress { display: none !important; }
             .site-nav, .site-footer, .back-link,
             .action-btns, .approve-form,
             .btn-primary, .btn-ghost, .btn-withdraw,
@@ -389,7 +463,74 @@
         &copy; @DateTime.Now.Year Outsource Request Portal — Internal Use Only
     </footer>
 
+    <!-- Modal overlay -->
+    <div class="site-overlay" id="site-overlay">
+        <div class="site-modal-box">
+            <div class="site-modal-title" id="site-modal-title"></div>
+            <div class="site-modal-msg" id="site-modal-msg"></div>
+            <div class="site-modal-btns">
+                <button class="btn-ghost" id="site-modal-cancel">Cancel</button>
+                <button class="btn-primary" id="site-modal-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page progress bar -->
+    <div id="page-progress"></div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script>
+        // ── Custom modal (replaces browser alert / confirm) ──────────────
+        const SiteModal = {
+            _resolve: null,
+            show(msg, { confirm: isConfirm = false, title = '' } = {}) {
+                return new Promise(resolve => {
+                    this._resolve = resolve;
+                    document.getElementById('site-modal-title').textContent =
+                        title || (isConfirm ? 'Confirm Action' : 'Notice');
+                    document.getElementById('site-modal-msg').textContent = msg;
+                    const cancelBtn = document.getElementById('site-modal-cancel');
+                    const okBtn     = document.getElementById('site-modal-ok');
+                    cancelBtn.style.display = isConfirm ? '' : 'none';
+                    okBtn.textContent = isConfirm ? 'Confirm' : 'OK';
+                    document.getElementById('site-overlay').classList.add('visible');
+                });
+            },
+            alert(msg, title)   { return this.show(msg, { confirm: false, title }); },
+            confirm(msg, title) { return this.show(msg, { confirm: true,  title }); },
+            _close(result) {
+                document.getElementById('site-overlay').classList.remove('visible');
+                if (this._resolve) { this._resolve(result); this._resolve = null; }
+            }
+        };
+        document.getElementById('site-modal-ok')
+            .addEventListener('click', () => SiteModal._close(true));
+        document.getElementById('site-modal-cancel')
+            .addEventListener('click', () => SiteModal._close(false));
+        document.getElementById('site-overlay')
+            .addEventListener('click', e => {
+                if (e.target === document.getElementById('site-overlay'))
+                    SiteModal._close(false);
+            });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') SiteModal._close(false);
+        });
+
+        // ── Page progress bar ────────────────────────────────────────────
+        const _bar = document.getElementById('page-progress');
+        document.addEventListener('click', e => {
+            const a = e.target.closest('a[href]');
+            if (a && !a.target && !e.metaKey && !e.ctrlKey && !a.href.startsWith('#')) {
+                _bar.style.width = '70%';
+                _bar.style.opacity = '1';
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            _bar.style.transition = 'none';
+            _bar.style.width = '0';
+            _bar.style.opacity = '1';
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 
 </body>

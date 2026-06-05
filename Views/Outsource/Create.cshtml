@@ -121,10 +121,78 @@
         border-color: rgba(239,68,68,0.5);
     }
 
-    .file-hint {
+    /* SAP lookup spinner */
+    .sap-spinner {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border);
+        border-top-color: var(--red);
+        border-radius: 50%;
+        animation: sap-spin 0.6s linear infinite;
+        display: none;
+        pointer-events: none;
+    }
+
+    @@keyframes sap-spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+    #partNumber { padding-right: 32px; }
+
+    /* Styled file upload zone */
+    .file-zone {
+        border: 2px dashed var(--border2);
+        border-radius: 8px;
+        padding: 24px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color .15s, background .15s;
+        position: relative;
+    }
+
+    .file-zone:hover, .file-zone.drag-over {
+        border-color: var(--red);
+        background: rgba(227,6,19,.04);
+    }
+
+    .file-zone input[type=file] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+    }
+
+    .file-zone-icon {
+        color: var(--muted);
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .file-zone-label {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 4px;
+    }
+
+        .file-zone-label strong { color: var(--text); }
+
+    .file-zone-hint {
         font-size: 11px;
         color: var(--muted);
-        margin-top: 5px;
+        opacity: 0.7;
+    }
+
+    .file-zone-name {
+        font-size: 12px;
+        color: var(--red);
+        margin-top: 8px;
+        font-family: var(--mono);
+        min-height: 16px;
     }
 </style>
 
@@ -172,6 +240,7 @@
                                asp-for="PartNumber"
                                placeholder="Search SAP part number…"
                                autocomplete="off" />
+                        <div class="sap-spinner" id="sapSpinner"></div>
                         <ul id="suggestions" class="suggestions"></ul>
                     </div>
                     <span asp-validation-for="PartNumber" class="field-error"></span>
@@ -219,10 +288,21 @@
 
         <div class="section-label">Attachments</div>
         <div class="form-card">
-            <div class="field">
-                <label>Supporting image or document (optional)</label>
-                <input type="file" name="imageUpload" accept="image/*,.pdf" />
-                <div class="file-hint">Accepted: JPEG, PNG, GIF, BMP, WebP, PDF · Max 10 MB</div>
+            <label style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;">
+                Supporting image or document (optional)
+            </label>
+            <div class="file-zone" id="fileZone">
+                <input type="file" name="imageUpload" id="fileInput" accept="image/*,.pdf" />
+                <div class="file-zone-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <div class="file-zone-label"><strong>Click to upload</strong> or drag and drop</div>
+                <div class="file-zone-hint">JPEG, PNG, GIF, BMP, WebP, PDF · Max 10 MB</div>
+                <div class="file-zone-name" id="fileZoneName"></div>
             </div>
             <div id="imagePreview" style="margin-top:12px;"></div>
         </div>
@@ -240,26 +320,27 @@
         const partInput = document.getElementById('partNumber');
         const descInput = document.getElementById('partDescription');
         const suggBox   = document.getElementById('suggestions');
+        const sapSpinner = document.getElementById('sapSpinner');
         const reasonTA  = document.getElementById('reasonText');
         const charCount = document.getElementById('charCount');
 
         let validPartSelected = false;
         let selectingSuggestion = false;
 
-        // Character counter for reason textarea
-        reasonTA.addEventListener('input', () => {
-            charCount.textContent = reasonTA.value.length;
-        });
-        // Initialise counter if form re-displayed with errors
+        // Character counter
+        reasonTA.addEventListener('input', () => { charCount.textContent = reasonTA.value.length; });
         charCount.textContent = reasonTA.value.length;
 
-        // SAP part lookup
+        // SAP part lookup with loading indicator
         async function searchParts(term) {
+            sapSpinner.style.display = 'block';
             try {
                 const res = await fetch(`/Outsource/SearchPart?term=${encodeURIComponent(term)}`);
                 return await res.json();
             } catch {
                 return [];
+            } finally {
+                sapSpinner.style.display = 'none';
             }
         }
 
@@ -295,6 +376,7 @@
 
         partInput.addEventListener('blur', async () => {
             if (selectingSuggestion || validPartSelected) return;
+            suggBox.style.display = 'none';
 
             const value = partInput.value.trim();
             if (!value) return;
@@ -320,16 +402,39 @@
         document.querySelector('form').addEventListener('submit', e => {
             if (!validPartSelected) {
                 e.preventDefault();
-                alert('Please select a valid SAP part number before submitting.');
+                SiteModal.alert(
+                    'Please select a valid SAP part number from the suggestions before submitting.',
+                    'Invalid Part Number'
+                );
             }
         });
 
-        // Image preview (images only; PDFs show a text notice)
-        document.querySelector('input[name="imageUpload"]').addEventListener('change', function () {
-            const preview = document.getElementById('imagePreview');
+        // File upload zone
+        const fileZone     = document.getElementById('fileZone');
+        const fileInput    = document.getElementById('fileInput');
+        const fileZoneName = document.getElementById('fileZoneName');
+        const preview      = document.getElementById('imagePreview');
+
+        fileZone.addEventListener('dragover', e => { e.preventDefault(); fileZone.classList.add('drag-over'); });
+        fileZone.addEventListener('dragleave', () => fileZone.classList.remove('drag-over'));
+        fileZone.addEventListener('drop', e => {
+            e.preventDefault();
+            fileZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) {
+                // DataTransfer.files is read-only — trigger via input
+                const dt = new DataTransfer();
+                dt.items.add(e.dataTransfer.files[0]);
+                fileInput.files = dt.files;
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', function () { handleFile(this.files[0]); });
+
+        function handleFile(file) {
             preview.innerHTML = '';
-            const file = this.files[0];
-            if (!file) return;
+            if (!file) { fileZoneName.textContent = ''; return; }
+            fileZoneName.textContent = file.name;
 
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
@@ -343,6 +448,6 @@
             } else if (file.type === 'application/pdf') {
                 preview.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:6px;">📄 ${file.name} (PDF)</div>`;
             }
-        });
+        }
     </script>
 }

@@ -389,5 +389,19 @@
                     existing ? existing + ',' + newUser : newUser;
             }
         }
+
+        // Auto-dismiss success banner after 3 s
+        const banner = document.querySelector('.success-banner');
+        if (banner) {
+            setTimeout(() => {
+                banner.style.transition = 'opacity 0.5s, max-height 0.4s, margin 0.4s, padding 0.4s';
+                banner.style.opacity = '0';
+                banner.style.maxHeight = '0';
+                banner.style.margin = '0';
+                banner.style.padding = '0';
+                banner.style.overflow = 'hidden';
+                setTimeout(() => banner.remove(), 500);
+            }, 3000);
+        }
     </script>
 }

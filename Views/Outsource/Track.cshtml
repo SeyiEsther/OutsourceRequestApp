@@ -485,7 +485,14 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <a class="back-link" style="margin-bottom:0;" asp-controller="Outsource" asp-action="Index">← Back to all requests</a>
-        <button class="btn-ghost" style="font-size:12px;padding:6px 14px;" onclick="window.print()">🖨 Print</button>
+        <button class="btn-ghost" style="font-size:12px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;" onclick="window.print()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            Print
+        </button>
     </div>
 
     <div class="track-hero">
@@ -505,8 +512,7 @@
             {
                 <form asp-action="Cancel" asp-route-id="@Model.RequestId" method="post">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn-withdraw"
-                            onclick="return confirm('Withdraw this request? This cannot be undone.')">
+                    <button type="submit" class="btn-withdraw" id="btn-withdraw">
                         Withdraw Request
                     </button>
                 </form>
@@ -774,16 +780,36 @@
 
 @section Scripts {
     <script>
-        // Require explicit confirmation before any approve or reject action
+        // Replace browser confirm() with themed modal for approve / reject
         document.querySelectorAll('.btn-approve, .btn-reject').forEach(btn => {
-            btn.addEventListener('click', function (e) {
+            btn.addEventListener('click', async function (e) {
+                e.preventDefault();
                 const isApprove = this.classList.contains('btn-approve');
-                const action    = isApprove ? 'APPROVE' : 'REJECT';
-                const warn      = isApprove
+                const msg = isApprove
                     ? 'Approve this request and pass it to the next stage?'
-                    : 'Reject this request? This cannot be undone.';
-                if (!confirm(`${action}: ${warn}`)) e.preventDefault();
+                    : 'Reject this request? This action cannot be undone.';
+                const ok = await SiteModal.confirm(msg, isApprove ? 'Approve Request' : 'Reject Request');
+                if (ok) this.closest('form').submit();
             });
         });
+
+        // Withdraw button confirmation
+        const withdrawBtn = document.getElementById('btn-withdraw');
+        if (withdrawBtn) {
+            withdrawBtn.addEventListener('click', async function (e) {
+                e.preventDefault();
+                const ok = await SiteModal.confirm(
+                    'This will withdraw the request and notify the team. This action cannot be undone.',
+                    'Withdraw Request'
+                );
+                if (ok) this.closest('form').submit();
+            });
+        }
+
+        // Scroll to the active stage on page load
+        const activeStage = document.querySelector('.stage.s-current');
+        if (activeStage) {
+            setTimeout(() => activeStage.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+        }
     </script>
 }
