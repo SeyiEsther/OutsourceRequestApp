@@ -194,49 +194,6 @@
 
     </div>
 
-    <!-- SMTP Settings -->
-    <div class="admin-label">Email / SMTP settings</div>
-    <div class="smtp-card">
-        <div class="smtp-hint">
-            Ask IT for your internal SMTP relay address. On most company networks this is something like
-            <code>smtp.yourcompany.local</code> on port 25.
-            Leave credentials blank if your network uses Windows integrated auth (most do).
-        </div>
-        <form asp-action="SaveSettings" method="post">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="reminderHours" value="@ViewBag.ReminderHours" />
-            <div class="smtp-grid">
-                <div class="field">
-                    <label>SMTP server</label>
-                    <input name="smtpHost"     value="@ViewBag.SmtpHost"     placeholder="smtp.yourcompany.local" />
-                </div>
-                <div class="field">
-                    <label>Port</label>
-                    <input name="smtpPort"     value="@(ViewBag.SmtpPort ?? "25")" placeholder="25" />
-                </div>
-                <div class="field">
-                    <label>From address</label>
-                    <input name="smtpFrom"     value="@ViewBag.SmtpFrom"     placeholder="outsource-portal@yourcompany.com" />
-                </div>
-                <div class="field">
-                    <label>From display name</label>
-                    <input name="smtpFromName" value="@(ViewBag.SmtpFromName ?? "Outsource Portal")" />
-                </div>
-                <div class="field">
-                    <label>Company email domain</label>
-                    <input name="emailDomain"  value="@ViewBag.EmailDomain"  placeholder="yourcompany.com" />
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn-save">Save settings</button>
-            </div>
-        </form>
-        <form asp-action="TestEmail" method="post" style="margin-top:12px;">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn-ghost" style="font-size:12px;">Send test email to myself</button>
-        </form>
-    </div>
-
     <!-- Admin Users -->
     <div class="admin-label">Admin users</div>
     <div class="wl-card">
