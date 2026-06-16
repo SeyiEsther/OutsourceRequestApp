@@ -46,6 +46,25 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Dev-only: no real authentication provider runs locally, so User.Identity.Name
+// would otherwise always be empty. Set DevImpersonateUser in
+// appsettings.Development.json to test as a specific approver/admin email.
+if (app.Environment.IsDevelopment())
+{
+    var devUser = app.Configuration["DevImpersonateUser"];
+    if (!string.IsNullOrWhiteSpace(devUser))
+    {
+        app.Use(async (context, next) =>
+        {
+            var identity = new System.Security.Claims.ClaimsIdentity(
+                new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, devUser) },
+                "DevImpersonation");
+            context.User = new System.Security.Claims.ClaimsPrincipal(identity);
+            await next();
+        });
+    }
+}
+
 app.UseAuthorization();
 
 app.MapControllerRoute(
