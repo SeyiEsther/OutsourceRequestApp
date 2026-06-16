@@ -4,9 +4,11 @@
     ViewData["Title"] = "Admin Panel";
     var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
     ApproverRole? GetRole(string key) => roles.FirstOrDefault(r => r.RoleKey == key);
-    var sc = GetRole("SC");
-    var finance = GetRole("Finance");
-    var md = GetRole("MD");
+    var wp       = GetRole("WP");
+    var prod     = GetRole("PROD");
+    var buyer    = GetRole("BUYER");
+    var sourcing = GetRole("SOURCING");
+    var md       = GetRole("MD");
 }
 
 <style>
@@ -139,14 +141,16 @@
     <div class="admin-label">Approval role assignments</div>
     <div class="role-grid">
 
-        @foreach (var (roleKey, displayName, roleVar) in new[] {
-            ("SC",      "Supply Chain Manager", sc),
-            ("Finance", "Finance Director",     finance),
-            ("MD",      "Managing Director",    md)
+        @foreach (var (roleKey, displayName, stageNum, roleVar) in new[] {
+            ("WP",       "Work Preparation Manager",          1, wp),
+            ("PROD",     "Production Manager",                2, prod),
+            ("BUYER",    "Strategic Buyer (Cost Compact)",    3, buyer),
+            ("SOURCING", "Sourcing & Procurement Manager",    4, sourcing),
+            ("MD",       "Managing Director",                 5, md)
         })
         {
             <div class="role-card">
-                <div class="rc-stage">Stage @(roleKey == "SC" ? "1" : roleKey == "Finance" ? "2" : "3")</div>
+                <div class="rc-stage">Stage @stageNum</div>
                 <div class="rc-title">@displayName</div>
                 <form asp-action="SaveRole" method="post">
                     @Html.AntiForgeryToken()

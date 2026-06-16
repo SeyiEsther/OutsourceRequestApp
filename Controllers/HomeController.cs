@@ -42,10 +42,12 @@ namespace OutsourceRequestApp.Controllers
             ViewBag.ApproverRoleKey = approverRole?.RoleKey ?? "";
             ViewBag.ApproverLabel   = approverRole?.RoleKey switch
             {
-                "SC"      => "Supply Chain",
-                "Finance" => "Finance Director",
-                "MD"      => "Managing Director",
-                _         => approverRole?.RoleDisplayName ?? ""
+                "WP"       => "Work Preparation Manager",
+                "PROD"     => "Production Manager",
+                "BUYER"    => "Strategic Buyer",
+                "SOURCING" => "Sourcing & Procurement",
+                "MD"       => "Managing Director",
+                _          => approverRole?.RoleDisplayName ?? ""
             };
 
             // Pending count + live queue preview for this approver
@@ -53,10 +55,12 @@ namespace OutsourceRequestApp.Controllers
             {
                 var statusFilter = approverRole.RoleKey switch
                 {
-                    "SC"      => RequestStatus.Submitted,
-                    "Finance" => RequestStatus.FinancePending,
-                    "MD"      => RequestStatus.MdPending,
-                    _         => ""
+                    "WP"       => RequestStatus.Submitted,
+                    "PROD"     => RequestStatus.ProductionPending,
+                    "BUYER"    => RequestStatus.CostCompactPending,
+                    "SOURCING" => RequestStatus.SourcingPending,
+                    "MD"       => RequestStatus.MdPending,
+                    _          => ""
                 };
 
                 if (!string.IsNullOrEmpty(statusFilter))
@@ -89,7 +93,8 @@ namespace OutsourceRequestApp.Controllers
 
             ViewBag.MyRequestsCount = myRequests.Count;
             ViewBag.MySubmitted = myRequests.Count(r => r.Status == RequestStatus.Submitted);
-            ViewBag.MyReview    = myRequests.Count(r => r.Status == RequestStatus.FinancePending || r.Status == RequestStatus.MdPending);
+            ViewBag.MyReview    = myRequests.Count(r => r.Status == RequestStatus.ProductionPending || r.Status == RequestStatus.CostCompactPending ||
+                                                          r.Status == RequestStatus.SourcingPending   || r.Status == RequestStatus.MdPending);
             ViewBag.MyApproved  = myRequests.Count(r => r.Status == RequestStatus.Approved);
             ViewBag.MyRejected  = myRequests.Count(r => r.Status == RequestStatus.Rejected || r.Status == RequestStatus.Cancelled);
 

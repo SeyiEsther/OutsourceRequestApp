@@ -61,7 +61,9 @@ namespace OutsourceRequestApp.Services
                 var pendingStatuses = new[]
                 {
                     RequestStatus.Submitted,
-                    RequestStatus.FinancePending,
+                    RequestStatus.ProductionPending,
+                    RequestStatus.CostCompactPending,
+                    RequestStatus.SourcingPending,
                     RequestStatus.MdPending
                 };
 
@@ -83,10 +85,12 @@ namespace OutsourceRequestApp.Services
                 {
                     var roleKey = request.Status switch
                     {
-                        RequestStatus.Submitted      => "SC",
-                        RequestStatus.FinancePending => "Finance",
-                        RequestStatus.MdPending      => "MD",
-                        _                            => null
+                        RequestStatus.Submitted          => "WP",
+                        RequestStatus.ProductionPending  => "PROD",
+                        RequestStatus.CostCompactPending => "BUYER",
+                        RequestStatus.SourcingPending     => "SOURCING",
+                        RequestStatus.MdPending           => "MD",
+                        _                                  => null
                     };
 
                     if (roleKey == null) continue;

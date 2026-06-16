@@ -55,18 +55,22 @@ namespace OutsourceRequestApp.ViewComponents
             {
                 approverLabel = approverRole.RoleKey switch
                 {
-                    "SC"      => "Supply Chain",
-                    "Finance" => "Finance",
-                    "MD"      => "Managing Director",
-                    _         => approverRole.RoleDisplayName
+                    "WP"       => "Work Preparation",
+                    "PROD"     => "Production",
+                    "BUYER"    => "Strategic Buyer",
+                    "SOURCING" => "Sourcing",
+                    "MD"       => "Managing Director",
+                    _          => approverRole.RoleDisplayName
                 };
 
                 var statusFilter = approverRole.RoleKey switch
                 {
-                    "SC"      => RequestStatus.Submitted,
-                    "Finance" => RequestStatus.FinancePending,
-                    "MD"      => RequestStatus.MdPending,
-                    _         => ""
+                    "WP"       => RequestStatus.Submitted,
+                    "PROD"     => RequestStatus.ProductionPending,
+                    "BUYER"    => RequestStatus.CostCompactPending,
+                    "SOURCING" => RequestStatus.SourcingPending,
+                    "MD"       => RequestStatus.MdPending,
+                    _          => ""
                 };
 
                 if (!string.IsNullOrEmpty(statusFilter))

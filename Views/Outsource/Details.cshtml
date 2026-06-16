@@ -3,14 +3,18 @@
 
 @{
     ViewData["Title"] = $"OSR-{Model.RequestId:000000}";
-    var roles   = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
-    var sc      = roles.FirstOrDefault(r => r.RoleKey == "SC");
-    var finance = roles.FirstOrDefault(r => r.RoleKey == "Finance");
-    var md      = roles.FirstOrDefault(r => r.RoleKey == "MD");
+    var roles    = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
+    var wp       = roles.FirstOrDefault(r => r.RoleKey == "WP");
+    var prod     = roles.FirstOrDefault(r => r.RoleKey == "PROD");
+    var buyer    = roles.FirstOrDefault(r => r.RoleKey == "BUYER");
+    var sourcing = roles.FirstOrDefault(r => r.RoleKey == "SOURCING");
+    var md       = roles.FirstOrDefault(r => r.RoleKey == "MD");
 
-    bool scDone  = Model.ScReviewedAt.HasValue;
-    bool finDone = Model.FinanceReviewedAt.HasValue;
-    bool mdDone  = Model.MdReviewedAt.HasValue;
+    bool wpDone       = Model.JFSignedDate.HasValue;
+    bool prodDone     = Model.LJSignedDate.HasValue;
+    bool scDone       = Model.ScReviewedAt.HasValue;
+    bool sourcingDone = Model.SGSignedDate.HasValue;
+    bool mdDone       = Model.MdReviewedAt.HasValue;
 
     string badgeClass = RequestStatus.BadgeClass(Model.Status);
     string statusLabel = RequestStatus.Label(Model.Status);
@@ -212,25 +216,85 @@
         </div>
 
         @{
-            bool scPend = Model.Status == "Submitted";
-            bool scRej  = !scDone && Model.Status == "Rejected";
+            bool wpPend = Model.Status == RequestStatus.Submitted;
+            bool wpRej  = !wpDone && Model.Status == RequestStatus.Rejected;
         }
         <div class="approval-stage">
-            <div class="as-ico @(scDone ? "asi-done" : scPend ? "asi-pend" : "asi-wait")">
-                @(scDone ? "✓" : scPend ? "→" : "–")
+            <div class="as-ico @(wpDone ? "asi-done" : wpPend ? "asi-pend" : "asi-wait")">
+                @(wpDone ? "✓" : wpPend ? "→" : "–")
             </div>
             <div class="as-body">
                 <div class="as-role">
-                    Supply Chain Review
-                    @if (sc != null && (scDone || scPend))
+                    Work Preparation
+                    @if (wp != null && (wpDone || wpPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @sc.FullName</span>
+                        <span style="font-weight:400;color:var(--text2)"> — @wp.FullName</span>
                     }
                 </div>
                 <div class="as-who">
-                    @if (scDone)      { <text>Reviewed by @Model.ScReviewedBy</text> }
-                    else if (scPend)  { <text>Awaiting review</text> }
+                    @if (wpDone)      { <text>Signed by @Model.JFSignedBy</text> }
+                    else if (wpPend)  { <text>Awaiting sign-off</text> }
                     else              { <text>Not yet reached</text> }
+                </div>
+                @if (wpDone)
+                {
+                    <div class="as-when">@Model.JFSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                }
+            </div>
+            <span class="stage-chip @(wpDone ? "chip-done" : wpPend ? "chip-pending" : wpRej ? "chip-rej" : "chip-waiting")">
+                @(wpDone ? "Approved" : wpPend ? "Pending" : wpRej ? "Rejected" : "Waiting")
+            </span>
+        </div>
+
+        @{
+            bool prodPend = Model.Status == RequestStatus.ProductionPending;
+        }
+        <div class="approval-stage">
+            <div class="as-ico @(prodDone ? "asi-done" : prodPend ? "asi-pend" : "asi-wait")">
+                @(prodDone ? "✓" : prodPend ? "→" : "–")
+            </div>
+            <div class="as-body">
+                <div class="as-role">
+                    Production
+                    @if (prod != null && (prodDone || prodPend))
+                    {
+                        <span style="font-weight:400;color:var(--text2)"> — @prod.FullName</span>
+                    }
+                </div>
+                <div class="as-who">
+                    @if (prodDone)      { <text>Signed by @Model.LJSignedBy</text> }
+                    else if (prodPend)  { <text>Awaiting sign-off</text> }
+                    else              { <text>Not yet reached</text> }
+                </div>
+                @if (prodDone)
+                {
+                    <div class="as-when">@Model.LJSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                }
+            </div>
+            <span class="stage-chip @(prodDone ? "chip-done" : prodPend ? "chip-pending" : "chip-waiting")">
+                @(prodDone ? "Approved" : prodPend ? "Pending" : "Waiting")
+            </span>
+        </div>
+
+        @{
+            bool buyerPend = Model.Status == RequestStatus.CostCompactPending;
+        }
+        <div class="approval-stage">
+            <div class="as-ico @(scDone ? "asi-done" : buyerPend ? "asi-pend" : "asi-wait")">
+                @(scDone ? "✓" : buyerPend ? "→" : "–")
+            </div>
+            <div class="as-body">
+                <div class="as-role">
+                    Cost Compact — Strategic Buyer
+                    @if (buyer != null && (scDone || buyerPend))
+                    {
+                        <span style="font-weight:400;color:var(--text2)"> — @buyer.FullName</span>
+                    }
+                </div>
+                <div class="as-who">
+                    @if (scDone)        { <text>Reviewed by @Model.ScReviewedBy</text> }
+                    else if (buyerPend) { <text>Awaiting review</text> }
+                    else                { <text>Not yet reached</text> }
                 </div>
                 @if (scDone)
                 {
@@ -238,44 +302,43 @@
                     @if (!string.IsNullOrEmpty(Model.ScComments)) { <div class="as-note">"@Model.ScComments"</div> }
                 }
             </div>
-            <span class="stage-chip @(scDone ? "chip-done" : scPend ? "chip-pending" : scRej ? "chip-rej" : "chip-waiting")">
-                @(scDone ? "Approved" : scPend ? "Pending" : scRej ? "Rejected" : "Waiting")
+            <span class="stage-chip @(scDone ? "chip-done" : buyerPend ? "chip-pending" : "chip-waiting")">
+                @(scDone ? "Approved" : buyerPend ? "Pending" : "Waiting")
             </span>
         </div>
 
         @{
-            bool finPend = Model.Status == "Finance_Pending";
+            bool sourcingPend = Model.Status == RequestStatus.SourcingPending;
         }
         <div class="approval-stage">
-            <div class="as-ico @(finDone ? "asi-done" : finPend ? "asi-pend" : "asi-wait")">
-                @(finDone ? "✓" : finPend ? "→" : "–")
+            <div class="as-ico @(sourcingDone ? "asi-done" : sourcingPend ? "asi-pend" : "asi-wait")">
+                @(sourcingDone ? "✓" : sourcingPend ? "→" : "–")
             </div>
             <div class="as-body">
                 <div class="as-role">
-                    Finance Director sign-off
-                    @if (finance != null && (finDone || finPend))
+                    Sourcing &amp; Procurement
+                    @if (sourcing != null && (sourcingDone || sourcingPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @finance.FullName</span>
+                        <span style="font-weight:400;color:var(--text2)"> — @sourcing.FullName</span>
                     }
                 </div>
                 <div class="as-who">
-                    @if (finDone)      { <text>Reviewed by @Model.FinanceReviewedBy</text> }
-                    else if (finPend)  { <text>Awaiting sign-off</text> }
+                    @if (sourcingDone)      { <text>Signed by @Model.SGSignedBy</text> }
+                    else if (sourcingPend)  { <text>Awaiting sign-off</text> }
                     else              { <text>Not yet reached</text> }
                 </div>
-                @if (finDone)
+                @if (sourcingDone)
                 {
-                    <div class="as-when">@Model.FinanceReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
-                    @if (!string.IsNullOrEmpty(Model.FinanceComments)) { <div class="as-note">"@Model.FinanceComments"</div> }
+                    <div class="as-when">@Model.SGSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
                 }
             </div>
-            <span class="stage-chip @(finDone ? "chip-done" : finPend ? "chip-pending" : "chip-waiting")">
-                @(finDone ? "Approved" : finPend ? "Pending" : "Waiting")
+            <span class="stage-chip @(sourcingDone ? "chip-done" : sourcingPend ? "chip-pending" : "chip-waiting")">
+                @(sourcingDone ? "Approved" : sourcingPend ? "Pending" : "Waiting")
             </span>
         </div>
 
         @{
-            bool mdPend = Model.Status == "MD_Pending";
+            bool mdPend = Model.Status == RequestStatus.MdPending;
         }
         <div class="approval-stage">
             <div class="as-ico @(mdDone && Model.Status == "Approved" ? "asi-done" : mdDone && Model.Status == "Rejected" ? "asi-rej" : mdPend ? "asi-pend" : "asi-wait")">

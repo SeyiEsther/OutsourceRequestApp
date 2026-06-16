@@ -52,5 +52,22 @@ namespace OutsourceRequestApp.Models
 
         // Reminder tracking
         public DateTime? LastReminderSentAt { get; set; }
+
+        // Stage 1 — John Fisher, Work Preparation Manager (sign-only)
+        public string? JFSignedBy { get; set; }
+        public DateTime? JFSignedDate { get; set; }
+
+        // Stage 2 — Lukasz Jaworski, Production Manager (sign-only)
+        public string? LJSignedBy { get; set; }
+        public DateTime? LJSignedDate { get; set; }
+
+        // Stage 4 — Simon Graham, Sourcing & Procurement Manager (sign-only)
+        public string? SGSignedBy { get; set; }
+        public DateTime? SGSignedDate { get; set; }
+
+        // Generic rejection record — populated at whichever stage rejects the request
+        public string? RejectionReason { get; set; }
+        public string? RejectedBy { get; set; }
+        public DateTime? RejectedAt { get; set; }
     }
 }

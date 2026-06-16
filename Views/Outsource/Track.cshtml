@@ -6,25 +6,35 @@
     var roles = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
     var currentUser = ViewBag.CurrentUsername as string ?? "";
 
-    var sc      = roles.FirstOrDefault(r => r.RoleKey == "SC");
-    var finance = roles.FirstOrDefault(r => r.RoleKey == "Finance");
-    var md      = roles.FirstOrDefault(r => r.RoleKey == "MD");
+    var wp       = roles.FirstOrDefault(r => r.RoleKey == "WP");
+    var prod     = roles.FirstOrDefault(r => r.RoleKey == "PROD");
+    var buyer    = roles.FirstOrDefault(r => r.RoleKey == "BUYER");
+    var sourcing = roles.FirstOrDefault(r => r.RoleKey == "SOURCING");
+    var md       = roles.FirstOrDefault(r => r.RoleKey == "MD");
 
-    bool scDone      = Model.ScReviewedAt.HasValue;
-    bool financeDone = Model.FinanceReviewedAt.HasValue;
-    bool mdDone      = Model.MdReviewedAt.HasValue;
+    bool wpDone       = Model.JFSignedDate.HasValue;
+    bool prodDone     = Model.LJSignedDate.HasValue;
+    bool buyerDone    = Model.ScReviewedAt.HasValue;
+    bool sourcingDone = Model.SGSignedDate.HasValue;
+    bool mdDone       = Model.MdReviewedAt.HasValue;
 
-    bool scPending      = Model.Status == "Submitted";
-    bool financePending = Model.Status == "Finance_Pending";
-    bool mdPending      = Model.Status == "MD_Pending";
+    bool wpPending       = Model.Status == RequestStatus.Submitted;
+    bool prodPending     = Model.Status == RequestStatus.ProductionPending;
+    bool buyerPending    = Model.Status == RequestStatus.CostCompactPending;
+    bool sourcingPending = Model.Status == RequestStatus.SourcingPending;
+    bool mdPending       = Model.Status == RequestStatus.MdPending;
 
-    bool isScApprover      = sc      != null && sc.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isFinanceApprover = finance != null && finance.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isMdApprover      = md      != null && md.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isWpApprover       = wp       != null && wp.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isProdApprover     = prod     != null && prod.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isBuyerApprover    = buyer    != null && buyer.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isSourcingApprover = sourcing != null && sourcing.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isMdApprover       = md       != null && md.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
 
     string badgeClass = RequestStatus.BadgeClass(Model.Status);
     string badgeLabel = RequestStatus.Label(Model.Status);
     bool isCancelled  = Model.Status == RequestStatus.Cancelled;
+    bool isRejected   = Model.Status == RequestStatus.Rejected;
+    bool isApproved   = Model.Status == RequestStatus.Approved;
     bool canWithdraw  = Model.Status == RequestStatus.Submitted &&
                         currentUser.Equals(Model.CreatedByUsername, StringComparison.OrdinalIgnoreCase);
 
@@ -32,18 +42,33 @@
     string waitingStr = waiting.TotalDays >= 1
         ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
         : $"{waiting.Hours}h {waiting.Minutes}m";
+
+    // Helper to compute step bar state for any stage given its done/pending flags,
+    // accounting for the request having been rejected at or before that stage.
+    string StepClass(bool done, bool pending, bool rejectedHere)
+    {
+        if (rejectedHere) return "s-rejected";
+        if (done) return "s-done";
+        if (pending) return "s-active";
+        return "";
+    }
+
+    // Did rejection happen at a stage that hasn't "done" its sign yet (i.e. this is the stage that rejected)?
+    bool wpRejectedHere       = isRejected && Model.RejectedBy != null && wp       != null && Model.RejectedBy.Equals(wp.Email, StringComparison.OrdinalIgnoreCase)       && !prodDone;
+    bool prodRejectedHere     = isRejected && Model.RejectedBy != null && prod     != null && Model.RejectedBy.Equals(prod.Email, StringComparison.OrdinalIgnoreCase)     && !buyerDone;
+    bool buyerRejectedHere    = isRejected && Model.RejectedBy != null && buyer    != null && Model.RejectedBy.Equals(buyer.Email, StringComparison.OrdinalIgnoreCase)    && !sourcingDone;
+    bool sourcingRejectedHere = isRejected && Model.RejectedBy != null && sourcing != null && Model.RejectedBy.Equals(sourcing.Email, StringComparison.OrdinalIgnoreCase) && !mdDone;
+    bool mdRejectedHere       = isRejected && mdDone;
 }
 
 <style>
     .track-pg { max-width: 860px; margin: 0 auto; padding: 36px 24px 60px; }
 
-    /* Top bar */
     .track-topbar {
         display: flex; justify-content: space-between; align-items: center;
         margin-bottom: 28px; flex-wrap: wrap; gap: 10px;
     }
 
-    /* Hero */
     .track-hero {
         background: var(--card); border: 1px solid var(--border);
         border-radius: 14px; padding: 24px 26px;
@@ -74,20 +99,22 @@
     .step:not(:last-child).s-done::after { background: var(--green); }
 
     .step-dot {
-        width: 38px; height: 38px; border-radius: 50%;
+        width: 34px; height: 34px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 600;
+        font-size: 12px; font-weight: 600;
         border: 2px solid var(--border2);
         background: var(--card2); color: var(--text3);
         position: relative; z-index: 2;
         transition: all .25s;
     }
-    .step.s-done   .step-dot { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
-    .step.s-active .step-dot { background: var(--accent-dim);   border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 5px rgba(99,102,241,.1); }
+    .step.s-done     .step-dot { background: rgba(34,197,94,.12); border-color: var(--green); color: var(--green); }
+    .step.s-active   .step-dot { background: var(--accent-dim);   border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 5px rgba(99,102,241,.1); }
+    .step.s-rejected .step-dot { background: rgba(239,68,68,.12); border-color: #f87171; color: #f87171; }
 
-    .step-label { margin-top: 8px; font-size: 11px; text-align: center; color: var(--text3); max-width: 70px; line-height: 1.4; }
-    .step.s-done   .step-label { color: var(--green); }
-    .step.s-active .step-label { color: var(--text); font-weight: 600; }
+    .step-label { margin-top: 8px; font-size: 10px; text-align: center; color: var(--text3); max-width: 64px; line-height: 1.4; }
+    .step.s-done     .step-label { color: var(--green); }
+    .step.s-active   .step-label { color: var(--text); font-weight: 600; }
+    .step.s-rejected .step-label { color: #f87171; }
 
     /* Stage cards */
     .stages { display: flex; flex-direction: column; gap: 10px; }
@@ -196,6 +223,7 @@
         .s2-grid { grid-template-columns: 1fr !important; }
         .track-hero { flex-direction: column; }
         .hero-right { align-items: flex-start; }
+        .steps { overflow-x: auto; }
     }
 </style>
 
@@ -244,20 +272,28 @@
             <div class="step-dot">✓</div>
             <div class="step-label">Submitted</div>
         </div>
-        <div class="step @(scDone && !isCancelled ? "s-done" : scPending ? "s-active" : "")">
-            <div class="step-dot">@(scDone && !isCancelled ? "✓" : isCancelled ? "✗" : scPending ? "→" : "–")</div>
-            <div class="step-label">Supply Chain</div>
+        <div class="step @StepClass(wpDone, wpPending, wpRejectedHere)">
+            <div class="step-dot">@(wpRejectedHere ? "✗" : wpDone ? "✓" : wpPending ? "→" : "–")</div>
+            <div class="step-label">Work Prep</div>
         </div>
-        <div class="step @(financeDone ? "s-done" : financePending ? "s-active" : "")">
-            <div class="step-dot">@(financeDone ? "✓" : financePending ? "→" : "–")</div>
-            <div class="step-label">Finance</div>
+        <div class="step @StepClass(prodDone, prodPending, prodRejectedHere)">
+            <div class="step-dot">@(prodRejectedHere ? "✗" : prodDone ? "✓" : prodPending ? "→" : "–")</div>
+            <div class="step-label">Production</div>
         </div>
-        <div class="step @(mdDone && Model.Status == "Approved" ? "s-done" : mdPending ? "s-active" : "")">
-            <div class="step-dot">@(mdDone && Model.Status == "Approved" ? "✓" : mdPending ? "→" : "–")</div>
+        <div class="step @StepClass(buyerDone, buyerPending, buyerRejectedHere)">
+            <div class="step-dot">@(buyerRejectedHere ? "✗" : buyerDone ? "✓" : buyerPending ? "→" : "–")</div>
+            <div class="step-label">Cost Compact</div>
+        </div>
+        <div class="step @StepClass(sourcingDone, sourcingPending, sourcingRejectedHere)">
+            <div class="step-dot">@(sourcingRejectedHere ? "✗" : sourcingDone ? "✓" : sourcingPending ? "→" : "–")</div>
+            <div class="step-label">Sourcing</div>
+        </div>
+        <div class="step @StepClass(mdDone && isApproved, mdPending, mdRejectedHere)">
+            <div class="step-dot">@(mdRejectedHere ? "✗" : mdDone && isApproved ? "✓" : mdPending ? "→" : "–")</div>
             <div class="step-label">MD Approval</div>
         </div>
-        <div class="step @(Model.Status == "Approved" ? "s-done" : "")">
-            <div class="step-dot">@(Model.Status == "Approved" ? "✓" : "–")</div>
+        <div class="step @(isApproved ? "s-done" : "")">
+            <div class="step-dot">@(isApproved ? "✓" : "–")</div>
             <div class="step-label">Complete</div>
         </div>
     </div>
@@ -269,31 +305,111 @@
         <div class="stage s-done">
             <div class="stage-ico si-done">✓</div>
             <div class="stage-body">
-                <div class="stage-role">Work Preparation — submitted</div>
+                <div class="stage-role">Request submitted</div>
                 <div class="stage-who">@Model.CreatedByUsername</div>
                 <div class="stage-when">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
             </div>
         </div>
 
-        <!-- Supply Chain -->
-        <div class="stage @(scDone ? "s-done" : scPending ? "s-current" : Model.Status == "Rejected" && !scDone ? "s-rejected" : "")">
-            <div class="stage-ico @(scDone ? "si-done" : scPending ? "si-cur" : "si-wait")">
-                @(scDone ? "✓" : scPending ? "→" : "–")
+        <!-- Stage 1: Work Preparation (John Fisher) -->
+        <div class="stage @(wpRejectedHere ? "s-rejected" : wpDone ? "s-done" : wpPending ? "s-current" : "")">
+            <div class="stage-ico @(wpRejectedHere ? "si-rej" : wpDone ? "si-done" : wpPending ? "si-cur" : "si-wait")">
+                @(wpRejectedHere ? "✗" : wpDone ? "✓" : wpPending ? "→" : "–")
             </div>
             <div class="stage-body">
-                <div class="stage-role @(!scDone && !scPending ? "dim" : "")">
-                    Supply Chain Review
-                    @if (sc != null && (scDone || scPending))
+                <div class="stage-role @(!wpDone && !wpPending ? "dim" : "")">
+                    Work Preparation
+                    @if (wp != null && (wpDone || wpPending))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @sc.FullName</span>
+                        <span style="font-weight:400;color:var(--text2)"> — @wp.FullName</span>
                     }
                 </div>
                 <div class="stage-who">
-                    @if (scPending && sc != null) { <text>Awaiting PPAP decision and cost impact from @sc.FullName</text> }
-                    else if (scDone)              { <text>Reviewed by @Model.ScReviewedBy</text> }
-                    else                         { <text>Not yet reached</text> }
+                    @if (wpPending && wp != null) { <text>Awaiting sign-off from @wp.FullName</text> }
+                    else if (wpDone)             { <text>Signed by @Model.JFSignedBy</text> }
+                    else                          { <text>Not yet reached</text> }
                 </div>
-                @if (scDone)
+                @if (wpDone)
+                {
+                    <div class="stage-when">@Model.JFSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                }
+
+                @if (wpPending && isWpApprover)
+                {
+                    <div class="approve-form">
+                        <form asp-action="ReviewWorkPrep" asp-route-id="@Model.RequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <label>Comments (optional)</label>
+                            <textarea name="comments" placeholder="Any notes for the requester or next reviewer…"></textarea>
+                            <div class="action-btns">
+                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to Production</button>
+                                <button type="submit" name="action" value="reject"  class="btn-reject">✗ Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Stage 2: Production (Lukasz Jaworski) -->
+        <div class="stage @(prodRejectedHere ? "s-rejected" : prodDone ? "s-done" : prodPending ? "s-current" : "")">
+            <div class="stage-ico @(prodRejectedHere ? "si-rej" : prodDone ? "si-done" : prodPending ? "si-cur" : "si-wait")">
+                @(prodRejectedHere ? "✗" : prodDone ? "✓" : prodPending ? "→" : "–")
+            </div>
+            <div class="stage-body">
+                <div class="stage-role @(!prodDone && !prodPending ? "dim" : "")">
+                    Production
+                    @if (prod != null && (prodDone || prodPending))
+                    {
+                        <span style="font-weight:400;color:var(--text2)"> — @prod.FullName</span>
+                    }
+                </div>
+                <div class="stage-who">
+                    @if (prodPending && prod != null) { <text>Awaiting sign-off from @prod.FullName</text> }
+                    else if (prodDone)                { <text>Signed by @Model.LJSignedBy</text> }
+                    else                               { <text>Not yet reached</text> }
+                </div>
+                @if (prodDone)
+                {
+                    <div class="stage-when">@Model.LJSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
+                }
+
+                @if (prodPending && isProdApprover)
+                {
+                    <div class="approve-form">
+                        <form asp-action="ReviewProduction" asp-route-id="@Model.RequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <label>Comments (optional)</label>
+                            <textarea name="comments" placeholder="Any notes for the requester or next reviewer…"></textarea>
+                            <div class="action-btns">
+                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to Cost Compact</button>
+                                <button type="submit" name="action" value="reject"  class="btn-reject">✗ Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Stage 3: Cost Compact (Chris Welland, Strategic Buyer) -->
+        <div class="stage @(buyerRejectedHere ? "s-rejected" : buyerDone ? "s-done" : buyerPending ? "s-current" : "")">
+            <div class="stage-ico @(buyerRejectedHere ? "si-rej" : buyerDone ? "si-done" : buyerPending ? "si-cur" : "si-wait")">
+                @(buyerRejectedHere ? "✗" : buyerDone ? "✓" : buyerPending ? "→" : "–")
+            </div>
+            <div class="stage-body">
+                <div class="stage-role @(!buyerDone && !buyerPending ? "dim" : "")">
+                    Cost Compact — Strategic Buyer
+                    @if (buyer != null && (buyerDone || buyerPending))
+                    {
+                        <span style="font-weight:400;color:var(--text2)"> — @buyer.FullName</span>
+                    }
+                </div>
+                <div class="stage-who">
+                    @if (buyerPending && buyer != null) { <text>Awaiting PPAP decision and cost impact from @buyer.FullName</text> }
+                    else if (buyerDone)                 { <text>Reviewed by @Model.ScReviewedBy</text> }
+                    else                                 { <text>Not yet reached</text> }
+                </div>
+                @if (buyerDone)
                 {
                     <div class="stage-when">@Model.ScReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
                     @if (!string.IsNullOrEmpty(Model.ScComments))
@@ -302,10 +418,10 @@
                     }
                 }
 
-                @if (scPending && isScApprover)
+                @if (buyerPending && isBuyerApprover)
                 {
                     <div class="approve-form">
-                        <form asp-action="Review" asp-route-id="@Model.RequestId" method="post">
+                        <form asp-action="ReviewCostCompact" asp-route-id="@Model.RequestId" method="post">
                             @Html.AntiForgeryToken()
                             <div class="s2-grid">
                                 <div class="field-sm">
@@ -328,10 +444,10 @@
                                     <input name="costOutsource" type="number" step="0.01" placeholder="0.00" />
                                 </div>
                             </div>
-                            <label>Comments for Finance (optional)</label>
-                            <textarea name="scComments" placeholder="Any comments to pass to Finance…"></textarea>
+                            <label>Comments for Sourcing (optional)</label>
+                            <textarea name="scComments" placeholder="Any comments to pass to Sourcing…"></textarea>
                             <div class="action-btns">
-                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to Finance</button>
+                                <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to Sourcing</button>
                                 <button type="submit" name="action" value="reject"  class="btn-reject">✗ Reject</button>
                             </div>
                         </form>
@@ -340,40 +456,36 @@
             </div>
         </div>
 
-        <!-- Finance -->
-        <div class="stage @(financeDone ? "s-done" : financePending ? "s-current" : "")">
-            <div class="stage-ico @(financeDone ? "si-done" : financePending ? "si-cur" : "si-wait")">
-                @(financeDone ? "✓" : financePending ? "→" : "–")
+        <!-- Stage 4: Sourcing (Simon Graham) -->
+        <div class="stage @(sourcingRejectedHere ? "s-rejected" : sourcingDone ? "s-done" : sourcingPending ? "s-current" : "")">
+            <div class="stage-ico @(sourcingRejectedHere ? "si-rej" : sourcingDone ? "si-done" : sourcingPending ? "si-cur" : "si-wait")">
+                @(sourcingRejectedHere ? "✗" : sourcingDone ? "✓" : sourcingPending ? "→" : "–")
             </div>
             <div class="stage-body">
-                <div class="stage-role @(!financeDone && !financePending ? "dim" : "")">
-                    Finance Director sign-off
-                    @if (finance != null && (financeDone || financePending))
+                <div class="stage-role @(!sourcingDone && !sourcingPending ? "dim" : "")">
+                    Sourcing &amp; Procurement
+                    @if (sourcing != null && (sourcingDone || sourcingPending))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @finance.FullName</span>
+                        <span style="font-weight:400;color:var(--text2)"> — @sourcing.FullName</span>
                     }
                 </div>
                 <div class="stage-who">
-                    @if (financePending && finance != null) { <text>Awaiting sign-off from @finance.FullName</text> }
-                    else if (financeDone)                   { <text>Reviewed by @Model.FinanceReviewedBy</text> }
-                    else                                    { <text>Not yet reached</text> }
+                    @if (sourcingPending && sourcing != null) { <text>Awaiting sign-off from @sourcing.FullName</text> }
+                    else if (sourcingDone)                    { <text>Signed by @Model.SGSignedBy</text> }
+                    else                                        { <text>Not yet reached</text> }
                 </div>
-                @if (financeDone)
+                @if (sourcingDone)
                 {
-                    <div class="stage-when">@Model.FinanceReviewedAt?.ToString("dd MMM yyyy, HH:mm")</div>
-                    @if (!string.IsNullOrEmpty(Model.FinanceComments))
-                    {
-                        <div class="stage-note">"@Model.FinanceComments"</div>
-                    }
+                    <div class="stage-when">@Model.SGSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
                 }
 
-                @if (financePending && isFinanceApprover)
+                @if (sourcingPending && isSourcingApprover)
                 {
                     <div class="approve-form">
-                        <form asp-action="ApproveFinance" asp-route-id="@Model.RequestId" method="post">
+                        <form asp-action="ReviewSourcing" asp-route-id="@Model.RequestId" method="post">
                             @Html.AntiForgeryToken()
-                            <label>Comments for MD (optional)</label>
-                            <textarea name="financeComments" placeholder="Any comments to pass to the MD…"></textarea>
+                            <label>Comments (optional)</label>
+                            <textarea name="comments" placeholder="Any notes for the requester or the MD…"></textarea>
                             <div class="action-btns">
                                 <button type="submit" name="action" value="approve" class="btn-approve">✓ Approve — pass to MD</button>
                                 <button type="submit" name="action" value="reject"  class="btn-reject">✗ Reject</button>
@@ -384,10 +496,10 @@
             </div>
         </div>
 
-        <!-- Managing Director -->
-        <div class="stage @(mdDone && Model.Status == "Approved" ? "s-done" : mdDone && Model.Status == "Rejected" ? "s-rejected" : mdPending ? "s-current" : "")">
-            <div class="stage-ico @(mdDone && Model.Status == "Approved" ? "si-done" : mdDone && Model.Status == "Rejected" ? "si-rej" : mdPending ? "si-cur" : "si-wait")">
-                @(mdDone && Model.Status == "Approved" ? "✓" : mdDone && Model.Status == "Rejected" ? "✗" : mdPending ? "→" : "–")
+        <!-- Stage 5: Managing Director (Patrick MacDonough) -->
+        <div class="stage @(mdRejectedHere ? "s-rejected" : mdDone && isApproved ? "s-done" : mdPending ? "s-current" : "")">
+            <div class="stage-ico @(mdRejectedHere ? "si-rej" : mdDone && isApproved ? "si-done" : mdPending ? "si-cur" : "si-wait")">
+                @(mdRejectedHere ? "✗" : mdDone && isApproved ? "✓" : mdPending ? "→" : "–")
             </div>
             <div class="stage-body">
                 <div class="stage-role @(!mdDone && !mdPending ? "dim" : "")">
@@ -398,10 +510,10 @@
                     }
                 </div>
                 <div class="stage-who">
-                    @if (mdPending && md != null)                    { <text>Awaiting final approval from @md.FullName</text> }
-                    else if (mdDone && Model.Status == "Approved")   { <text>Approved by @Model.MdReviewedBy — outsourcing authorised</text> }
-                    else if (mdDone && Model.Status == "Rejected")   { <text>Rejected by @Model.MdReviewedBy</text> }
-                    else                                              { <text>Not yet reached</text> }
+                    @if (mdPending && md != null) { <text>Awaiting final approval from @md.FullName</text> }
+                    else if (mdDone && isApproved) { <text>Approved by @Model.MdReviewedBy — outsourcing authorised</text> }
+                    else if (mdDone && isRejected) { <text>Rejected by @Model.MdReviewedBy</text> }
+                    else                             { <text>Not yet reached</text> }
                 </div>
                 @if (mdDone)
                 {
@@ -435,7 +547,17 @@
     {
         <div class="track-note note-cancelled">
             <span style="font-size:16px">✕</span>
-            <span>This request was withdrawn. @(!string.IsNullOrEmpty(Model.ScComments) ? Model.ScComments : "")</span>
+            <span>This request was withdrawn. @(!string.IsNullOrEmpty(Model.RejectionReason) ? Model.RejectionReason : "")</span>
+        </div>
+    }
+    else if (isRejected)
+    {
+        <div class="track-note note-cancelled">
+            <span style="font-size:16px">✕</span>
+            <span>
+                This request was rejected by @Model.RejectedBy on @(Model.RejectedAt?.ToString("dd MMM yyyy, HH:mm")).
+                @(!string.IsNullOrEmpty(Model.RejectionReason) ? $"\"{Model.RejectionReason}\"" : "")
+            </span>
         </div>
     }
     else
