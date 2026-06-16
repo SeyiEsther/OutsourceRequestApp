@@ -72,6 +72,14 @@ namespace OutsourceRequestApp.Controllers
                 .CountAsync(r => r.CreatedByUsername != null &&
                                  r.CreatedByUsername.ToLower() == currentUser.ToLower());
 
+            // Recent requests for the dashboard table
+            ViewBag.RecentRequests = await _db.OutsourceRequests
+                .Where(r => r.CreatedByUsername != null &&
+                            r.CreatedByUsername.ToLower() == currentUser.ToLower())
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(3)
+                .ToListAsync();
+
             return View();
         }
 
