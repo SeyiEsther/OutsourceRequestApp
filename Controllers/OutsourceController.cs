@@ -219,7 +219,7 @@ namespace OutsourceRequestApp.Controllers
             var scApprover  = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "SC");
             var currentUser = User?.Identity?.Name ?? "";
 
-            if (scApprover == null || !scApprover.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (scApprover == null || !scApprover.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
                 return StatusCode(403, "You are not assigned as the Supply Chain approver.");
 
             return View(request);
@@ -279,7 +279,7 @@ namespace OutsourceRequestApp.Controllers
             var finApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "Finance");
             var currentUser = User?.Identity?.Name ?? "";
 
-            if (finApprover == null || !finApprover.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (finApprover == null || !finApprover.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
                 return StatusCode(403, "You are not assigned as the Finance approver.");
 
             request.FinanceReviewedAt = DateTime.Now;
@@ -320,7 +320,7 @@ namespace OutsourceRequestApp.Controllers
             var mdApprover  = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "MD");
             var currentUser = User?.Identity?.Name ?? "";
 
-            if (mdApprover == null || !mdApprover.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (mdApprover == null || !mdApprover.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
                 return StatusCode(403, "You are not assigned as the Managing Director approver.");
 
             request.MdReviewedAt = DateTime.Now;
@@ -345,7 +345,7 @@ namespace OutsourceRequestApp.Controllers
             var roles       = await _db.ApproverRoles.ToListAsync();
 
             var myRole = roles.FirstOrDefault(r =>
-                r.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase));
+                r.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase));
 
             if (myRole == null)
             {

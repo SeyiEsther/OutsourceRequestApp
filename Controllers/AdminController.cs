@@ -186,14 +186,14 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
-        // GET: /Admin/Seed?username=DOMAIN\you
+        // GET: /Admin/Seed?username=you@company.com
         // One-time bootstrap: only works if no admin has been set yet.
         // After first admin is configured via the Admin panel, this is inert.
         // ----------------------------------------------------------------
         public async Task<IActionResult> Seed(string username)
         {
             if (string.IsNullOrWhiteSpace(username))
-                return Content("Usage: /Admin/Seed?username=DOMAIN\\yourusername");
+                return Content("Usage: /Admin/Seed?username=you@company.com");
 
             var existing = await _db.AppSettings
                 .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");

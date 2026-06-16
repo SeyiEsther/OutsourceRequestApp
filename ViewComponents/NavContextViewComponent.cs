@@ -45,8 +45,8 @@ namespace OutsourceRequestApp.ViewComponents
             // ── Approver role check ──────────────────────────────────────
             var approverRole = await _db.ApproverRoles
                 .FirstOrDefaultAsync(r =>
-                    r.Username != null &&
-                    r.Username.ToLower() == currentUser.ToLower());
+                    r.Email != null &&
+                    r.Email.ToLower() == currentUser.ToLower());
 
             int    pendingCount  = 0;
             string approverLabel = "";

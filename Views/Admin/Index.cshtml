@@ -153,17 +153,14 @@
                     <input type="hidden" name="roleKey"         value="@roleKey" />
                     <input type="hidden" name="roleDisplayName" value="@displayName" />
                     <div class="field">
-                        <label>Windows username</label>
-                        <input name="username" value="@(roleVar?.Username ?? "")" placeholder="DOMAIN\username" />
-                    </div>
-                    <div class="field">
                         <label>Full name</label>
                         <input name="fullName" value="@(roleVar?.FullName ?? "")" placeholder="e.g. Sarah Jones" />
                     </div>
                     <div class="field">
-                        <label>Email address</label>
+                        <label>Email address (used to grant access)</label>
                         <input name="email" type="email" value="@(roleVar?.Email ?? "")" placeholder="s.jones@company.com" />
                     </div>
+                    <input type="hidden" name="username" value="@(roleVar?.Username ?? "")" />
                     <button type="submit" class="btn-save">Save</button>
                 </form>
             </div>
@@ -239,7 +236,7 @@
     <!-- Admin Users -->
     <div class="admin-label">Admin users</div>
     <div class="wl-card">
-        <p class="wl-hint">These Windows usernames have access to this Admin panel.</p>
+        <p class="wl-hint">These email addresses have access to this Admin panel.</p>
 
         @{
             var adminList = (ViewBag.AdminUsers as string ?? "")
@@ -265,7 +262,7 @@
         <form asp-action="SaveAdmins" method="post">
             @Html.AntiForgeryToken()
             <div class="wl-add">
-                <input id="newAdminInput" placeholder="DOMAIN\username" />
+                <input id="newAdminInput" placeholder="s.jones@company.com" />
                 <input type="hidden" id="adminUsersHidden" name="adminUsers" value="@ViewBag.AdminUsers" />
                 <button type="submit" class="btn-save" onclick="appendAdmin()">Add</button>
             </div>

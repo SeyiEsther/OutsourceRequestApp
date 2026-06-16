@@ -18,9 +18,9 @@
     bool financePending = Model.Status == "Finance_Pending";
     bool mdPending      = Model.Status == "MD_Pending";
 
-    bool isScApprover      = sc      != null && sc.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isFinanceApprover = finance != null && finance.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isMdApprover      = md      != null && md.Username.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isScApprover      = sc      != null && sc.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isFinanceApprover = finance != null && finance.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    bool isMdApprover      = md      != null && md.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
 
     string badgeClass = RequestStatus.BadgeClass(Model.Status);
     string badgeLabel = RequestStatus.Label(Model.Status);

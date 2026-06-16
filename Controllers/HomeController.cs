@@ -35,8 +35,8 @@ namespace OutsourceRequestApp.Controllers
             // ── Approver role check ──────────────────────────────────────
             var approverRole = await _db.ApproverRoles
                 .FirstOrDefaultAsync(r =>
-                    r.Username != null &&
-                    r.Username.ToLower() == currentUser.ToLower());
+                    r.Email != null &&
+                    r.Email.ToLower() == currentUser.ToLower());
 
             ViewBag.IsApprover      = approverRole != null;
             ViewBag.ApproverRoleKey = approverRole?.RoleKey ?? "";
