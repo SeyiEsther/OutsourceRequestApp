@@ -82,7 +82,7 @@ namespace OutsourceRequestApp.Controllers
             }
 
             role.RoleDisplayName = roleDisplayName;
-            role.Username        = username;
+            role.Username        = username ?? "";
             role.FullName        = fullName;
             role.Email           = email;
 
