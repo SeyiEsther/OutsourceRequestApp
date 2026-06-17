@@ -9,11 +9,13 @@ namespace OutsourceRequestApp.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<EmailService> _logger;
+        private readonly IConfiguration _config;
 
-        public EmailService(AppDbContext db, ILogger<EmailService> logger)
+        public EmailService(AppDbContext db, ILogger<EmailService> logger, IConfiguration config)
         {
-            _db = db;
+            _db     = db;
             _logger = logger;
+            _config = config;
         }
 
         // ----------------------------------------------------------------
@@ -75,11 +77,8 @@ namespace OutsourceRequestApp.Services
             return $"{username}@{domain}";
         }
 
-        private static string AppUrl()
-        {
-            // Adjust this if your server address changes
-            return "http://csm-srv-16:5200";
-        }
+        private string AppUrl() =>
+            _config["BaseAddress"] ?? "http://localhost:5200";
 
         // ----------------------------------------------------------------
         // Public send methods
