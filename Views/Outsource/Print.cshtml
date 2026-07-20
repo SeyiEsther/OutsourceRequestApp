@@ -1,0 +1,178 @@
+@model OutsourceRequestApp.Models.OutsourceRequest
+@using OutsourceRequestApp.Models
+@{
+    Layout = null;
+    var roles    = ViewBag.Roles as List<ApproverRole> ?? new List<ApproverRole>();
+    var wp       = roles.FirstOrDefault(r => r.RoleKey == "WP");
+    var prod     = roles.FirstOrDefault(r => r.RoleKey == "PROD");
+    var buyer    = roles.FirstOrDefault(r => r.RoleKey == "BUYER");
+    var sourcing = roles.FirstOrDefault(r => r.RoleKey == "SOURCING");
+    var md       = roles.FirstOrDefault(r => r.RoleKey == "MD");
+    var refNo    = $"OSR-{Model.RequestId:000000}";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>@refNo — Outsource Request</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 18mm; }
+.header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; border-bottom:2px solid #111; padding-bottom:12px; }
+.company { font-size:20px; font-weight:900; letter-spacing:-0.03em; }
+.company span { color:#c00; }
+.ref { font-size:16px; font-weight:bold; }
+.meta { font-size:10px; color:#666; margin-top:4px; }
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:bold; background:#f0f0f0; margin-top:6px; }
+.section { margin-bottom:18px; }
+.section-title { font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:.08em; color:#555; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:10px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; }
+.field dt { font-size:10px; font-weight:bold; text-transform:uppercase; color:#777; margin-bottom:2px; }
+.field dd { font-size:12px; border-bottom:1px solid #ddd; padding-bottom:4px; min-height:20px; }
+.reason-box { border:1px solid #ccc; border-radius:4px; padding:10px; min-height:56px; line-height:1.55; }
+.sign-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:8px; }
+.sign-box { border:1px solid #ccc; border-radius:4px; padding:10px 12px; min-height:90px; }
+.sign-title { font-size:10px; font-weight:bold; text-transform:uppercase; color:#555; margin-bottom:6px; }
+.sign-name { font-size:12px; font-weight:bold; margin-bottom:4px; }
+.sign-when { font-size:10px; color:#666; }
+.sign-line { border-top:1px solid #999; margin-top:28px; padding-top:4px; font-size:10px; color:#777; }
+.actions { margin-top:20px; }
+.actions button { padding:8px 14px; font-size:12px; cursor:pointer; }
+@@media print {
+    body { padding:10mm; }
+    @@page { margin:10mm; }
+    .actions { display:none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="company">RITTAL<span>-CSM</span></div>
+        <div class="meta">Outsource Request Form</div>
+    </div>
+    <div style="text-align:right;">
+        <div class="ref">@refNo</div>
+        <div class="badge">@RequestStatus.Label(Model.Status)</div>
+        <div class="meta">Printed @DateTime.Now.ToString("dd MMM yyyy HH:mm")</div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Part details</div>
+    <div class="grid">
+        <dl class="field"><dt>Part Number</dt><dd style="font-family:monospace">@Model.PartNumber</dd></dl>
+        <dl class="field"><dt>SAP Description</dt><dd>@(Model.SapDescription ?? "—")</dd></dl>
+        <dl class="field"><dt>Drawing Number</dt><dd style="font-family:monospace">@(Model.DrawingNumber ?? "—")</dd></dl>
+        <dl class="field"><dt>Quantity</dt><dd>@Model.Quantity</dd></dl>
+        <dl class="field"><dt>Start Date</dt><dd>@(Model.StartDate?.ToString("dd MMM yyyy") ?? "—")</dd></dl>
+        <dl class="field"><dt>End Date</dt><dd>@(Model.EndDate?.ToString("dd MMM yyyy") ?? "—")</dd></dl>
+        <dl class="field"><dt>Submitted By</dt><dd>@Model.CreatedByUsername</dd></dl>
+        <dl class="field"><dt>Submitted At</dt><dd>@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd></dl>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Reason for outsourcing</div>
+    <div class="reason-box">@Model.Reason</div>
+</div>
+
+@if (Model.PpapRequired.HasValue || Model.CostInhousePerMonth.HasValue || Model.CostOutsourcePerMonth.HasValue)
+{
+    <div class="section">
+        <div class="section-title">Cost Compact</div>
+        <div class="grid">
+            <dl class="field"><dt>PPAP Required</dt><dd>@(Model.PpapRequired == true ? "Yes" : Model.PpapRequired == false ? "No" : "—")</dd></dl>
+            <dl class="field"><dt>Cost Notes</dt><dd>@(Model.CostComments ?? "—")</dd></dl>
+            <dl class="field"><dt>In-house / month</dt><dd>@(Model.CostInhousePerMonth.HasValue ? $"£{Model.CostInhousePerMonth.Value:N2}" : "—")</dd></dl>
+            <dl class="field"><dt>Outsource / month</dt><dd>@(Model.CostOutsourcePerMonth.HasValue ? $"£{Model.CostOutsourcePerMonth.Value:N2}" : "—")</dd></dl>
+        </div>
+    </div>
+}
+
+<div class="section">
+    <div class="section-title">Approvals</div>
+    <div class="sign-grid">
+        <div class="sign-box">
+            <div class="sign-title">1. Work Preparation</div>
+            <div class="sign-name">@(Model.JFSignedBy ?? wp?.FullName ?? "—")</div>
+            @if (Model.JFSignedDate.HasValue)
+            {
+                <div class="sign-when">Signed @Model.JFSignedDate.Value.ToString("dd MMM yyyy HH:mm")</div>
+            }
+            else
+            {
+                <div class="sign-line">Signature / date</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">2. Production</div>
+            <div class="sign-name">@(Model.LJSignedBy ?? prod?.FullName ?? "—")</div>
+            @if (Model.LJSignedDate.HasValue)
+            {
+                <div class="sign-when">Signed @Model.LJSignedDate.Value.ToString("dd MMM yyyy HH:mm")</div>
+            }
+            else
+            {
+                <div class="sign-line">Signature / date</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">3. Cost Compact</div>
+            <div class="sign-name">@(Model.ScReviewedBy ?? buyer?.FullName ?? "—")</div>
+            @if (Model.ScReviewedAt.HasValue)
+            {
+                <div class="sign-when">Reviewed @Model.ScReviewedAt.Value.ToString("dd MMM yyyy HH:mm")</div>
+            }
+            else
+            {
+                <div class="sign-line">Signature / date</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">4. Sourcing</div>
+            <div class="sign-name">@(Model.SGSignedBy ?? sourcing?.FullName ?? "—")</div>
+            @if (Model.SGSignedDate.HasValue)
+            {
+                <div class="sign-when">Signed @Model.SGSignedDate.Value.ToString("dd MMM yyyy HH:mm")</div>
+            }
+            else
+            {
+                <div class="sign-line">Signature / date</div>
+            }
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">5. Managing Director</div>
+            <div class="sign-name">@(Model.MdReviewedBy ?? md?.FullName ?? "—")</div>
+            @if (Model.MdReviewedAt.HasValue)
+            {
+                <div class="sign-when">Decided @Model.MdReviewedAt.Value.ToString("dd MMM yyyy HH:mm")</div>
+            }
+            else
+            {
+                <div class="sign-line">Signature / date</div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (Model.Status == RequestStatus.Rejected || Model.Status == RequestStatus.Cancelled)
+{
+    <div class="section">
+        <div class="section-title">Rejection / withdrawal</div>
+        <div class="reason-box">
+            @(Model.RejectedBy ?? "—")
+            @(Model.RejectedAt.HasValue ? $" on {Model.RejectedAt.Value:dd MMM yyyy HH:mm}" : "")
+            @(!string.IsNullOrEmpty(Model.RejectionReason) ? $" — {Model.RejectionReason}" : "")
+        </div>
+    </div>
+}
+
+<div class="actions">
+    <button type="button" onclick="window.print()">Print</button>
+    <button type="button" onclick="window.close()">Close</button>
+</div>
+
+</body>
+</html>

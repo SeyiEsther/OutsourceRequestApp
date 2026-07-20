@@ -176,6 +176,18 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
+        // GET: /Outsource/Print/5  — printable approval form
+        // ----------------------------------------------------------------
+        public async Task<IActionResult> Print(int id)
+        {
+            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
+            if (request == null) return NotFound();
+
+            ViewBag.Roles = await _db.ApproverRoles.ToListAsync();
+            return View(request);
+        }
+
+        // ----------------------------------------------------------------
         // POST: /Outsource/Cancel/5  — requester withdraws their own request
         // ----------------------------------------------------------------
         [HttpPost]
@@ -209,32 +221,44 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
-        // GET/POST: /Outsource/ReviewWorkPrep/5  (Stage 1 — John Fisher)
+        // Auth / status helpers for approval actions
         // ----------------------------------------------------------------
-        [HttpGet]
-        public async Task<IActionResult> ReviewWorkPrep(int id)
+        private async Task<(OutsourceRequest? request, ApproverRole? approver, IActionResult? error)>
+            LoadForReviewAsync(int id, string roleKey, string expectedStatus)
         {
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
+            if (request == null)
+                return (null, null, NotFound());
 
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "WP");
+            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == roleKey);
             var currentUser = User?.Identity?.Name ?? "";
 
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return StatusCode(403, "You are not assigned as the Work Preparation approver.");
+            if (approver == null || string.IsNullOrEmpty(approver.Email) ||
+                !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+                return (request, approver, StatusCode(403, "You are not assigned as the approver for this stage."));
 
-            return View(request);
+            if (request.Status != expectedStatus)
+                return (request, approver, BadRequest("This request is not awaiting action at this stage."));
+
+            return (request, approver, null);
         }
+
+        // ----------------------------------------------------------------
+        // GET/POST: /Outsource/ReviewWorkPrep/5  (Stage 1 — Work Prep)
+        // ----------------------------------------------------------------
+        [HttpGet]
+        public IActionResult ReviewWorkPrep(int id) =>
+            RedirectToAction(nameof(Track), new { id });
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewWorkPrep(int id, string? comments, string action)
         {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
+            var (request, _, error) = await LoadForReviewAsync(id, "WP", RequestStatus.Submitted);
+            if (error != null) return error;
 
             var currentUser = User?.Identity?.Name ?? "";
-            request.JFSignedBy   = currentUser;
+            request!.JFSignedBy   = currentUser;
             request.JFSignedDate = DateTime.Now;
 
             if (action == "approve")
@@ -262,32 +286,21 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
-        // GET/POST: /Outsource/ReviewProduction/5  (Stage 2 — Lukasz Jaworski)
+        // GET/POST: /Outsource/ReviewProduction/5  (Stage 2 — Production)
         // ----------------------------------------------------------------
         [HttpGet]
-        public async Task<IActionResult> ReviewProduction(int id)
-        {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
-
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "PROD");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return StatusCode(403, "You are not assigned as the Production approver.");
-
-            return View(request);
-        }
+        public IActionResult ReviewProduction(int id) =>
+            RedirectToAction(nameof(Track), new { id });
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewProduction(int id, string? comments, string action)
         {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
+            var (request, _, error) = await LoadForReviewAsync(id, "PROD", RequestStatus.ProductionPending);
+            if (error != null) return error;
 
             var currentUser = User?.Identity?.Name ?? "";
-            request.LJSignedBy   = currentUser;
+            request!.LJSignedBy   = currentUser;
             request.LJSignedDate = DateTime.Now;
 
             if (action == "approve")
@@ -315,22 +328,11 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
-        // GET/POST: /Outsource/ReviewCostCompact/5  (Stage 3 — Chris Welland, Strategic Buyer)
+        // GET/POST: /Outsource/ReviewCostCompact/5  (Stage 3 — Strategic Buyer)
         // ----------------------------------------------------------------
         [HttpGet]
-        public async Task<IActionResult> ReviewCostCompact(int id)
-        {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
-
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "BUYER");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return StatusCode(403, "You are not assigned as the Strategic Buyer approver.");
-
-            return View(request);
-        }
+        public IActionResult ReviewCostCompact(int id) =>
+            RedirectToAction(nameof(Track), new { id });
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -338,12 +340,12 @@ namespace OutsourceRequestApp.Controllers
                                                 decimal? costOutsource, string? costComments,
                                                 string? scComments, string action)
         {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
+            var (request, _, error) = await LoadForReviewAsync(id, "BUYER", RequestStatus.CostCompactPending);
+            if (error != null) return error;
 
             var currentUser = User?.Identity?.Name ?? "";
 
-            request.PpapRequired          = ppapRequired;
+            request!.PpapRequired          = ppapRequired;
             request.CostInhousePerMonth   = costInhouse;
             request.CostOutsourcePerMonth = costOutsource;
             request.CostComments          = costComments;
@@ -376,32 +378,21 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
-        // GET/POST: /Outsource/ReviewSourcing/5  (Stage 4 — Simon Graham)
+        // GET/POST: /Outsource/ReviewSourcing/5  (Stage 4 — Sourcing)
         // ----------------------------------------------------------------
         [HttpGet]
-        public async Task<IActionResult> ReviewSourcing(int id)
-        {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
-
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "SOURCING");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return StatusCode(403, "You are not assigned as the Sourcing approver.");
-
-            return View(request);
-        }
+        public IActionResult ReviewSourcing(int id) =>
+            RedirectToAction(nameof(Track), new { id });
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewSourcing(int id, string? comments, string action)
         {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
+            var (request, _, error) = await LoadForReviewAsync(id, "SOURCING", RequestStatus.SourcingPending);
+            if (error != null) return error;
 
             var currentUser = User?.Identity?.Name ?? "";
-            request.SGSignedBy   = currentUser;
+            request!.SGSignedBy   = currentUser;
             request.SGSignedDate = DateTime.Now;
 
             if (action == "approve")
@@ -429,22 +420,18 @@ namespace OutsourceRequestApp.Controllers
         }
 
         // ----------------------------------------------------------------
-        // POST: /Outsource/ApproveMD/5  (Stage 5 — Patrick MacDonough, final)
+        // POST: /Outsource/ApproveMD/5  (Stage 5 — Managing Director, final)
         // ----------------------------------------------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveMD(int id, string? mdComments, string action)
         {
-            var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
-            if (request == null) return NotFound();
+            var (request, _, error) = await LoadForReviewAsync(id, "MD", RequestStatus.MdPending);
+            if (error != null) return error;
 
-            var mdApprover  = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "MD");
             var currentUser = User?.Identity?.Name ?? "";
 
-            if (mdApprover == null || !mdApprover.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
-                return StatusCode(403, "You are not assigned as the Managing Director approver.");
-
-            request.MdReviewedAt = DateTime.Now;
+            request!.MdReviewedAt = DateTime.Now;
             request.MdReviewedBy = currentUser;
             request.MdComments   = mdComments;
             request.Status       = action == "approve" ? RequestStatus.Approved : RequestStatus.Rejected;

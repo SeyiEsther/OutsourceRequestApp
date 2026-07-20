@@ -119,6 +119,9 @@
         </div>
         <div class="detail-actions">
             <span class="badge @badgeClass">@statusLabel</span>
+            <a class="btn-ghost" asp-controller="Outsource" asp-action="Print" asp-route-id="@Model.RequestId" target="_blank">
+                Print
+            </a>
             <a class="btn-primary" asp-controller="Outsource" asp-action="Track" asp-route-id="@Model.RequestId">
                 Track →
             </a>
@@ -178,7 +181,7 @@
 
     @if (Model.CostInhousePerMonth.HasValue || Model.CostOutsourcePerMonth.HasValue || Model.PpapRequired.HasValue)
     {
-        <div class="section-label">Supply Chain — cost analysis</div>
+        <div class="section-label">Cost Compact — cost analysis</div>
         <div class="form-card">
             <div class="cost-row">
                 <span class="cost-label">PPAP required?</span>
@@ -373,6 +376,7 @@
 
     <div class="footer-actions">
         <a class="btn-ghost" asp-controller="Outsource" asp-action="Index">← All requests</a>
+        <a class="btn-ghost" asp-controller="Outsource" asp-action="Print" asp-route-id="@Model.RequestId" target="_blank">Print</a>
         <a class="btn-primary" asp-controller="Outsource" asp-action="Track" asp-route-id="@Model.RequestId">
             Open tracker →
         </a>

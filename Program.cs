@@ -46,6 +46,11 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Production: when hosted in IIS with Windows Authentication (see web.config),
+// the authenticated Windows identity is available on HttpContext.User.
+// Approvers/admins are matched by email — set Admin users and Approver role
+// emails in /Admin, or seed the first admin via /Admin/Seed?username=you@company.com.
+//
 // Dev-only: no real authentication provider runs locally, so User.Identity.Name
 // would otherwise always be empty. Set DevImpersonateUser in
 // appsettings.Development.json to test as a specific approver/admin email.

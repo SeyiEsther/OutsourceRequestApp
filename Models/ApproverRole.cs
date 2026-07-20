@@ -8,7 +8,7 @@ namespace OutsourceRequestApp.Models
         [Key]
         public int Id { get; set; }
 
-        // "SC", "Finance", "MD"
+        // "WP", "PROD", "BUYER", "SOURCING", "MD"
         [Required]
         public string RoleKey { get; set; } = string.Empty;
 

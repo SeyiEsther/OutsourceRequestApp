@@ -159,9 +159,19 @@ namespace OutsourceRequestApp.Controllers
                 .FirstOrDefaultAsync(s => s.SettingKey == "CompanyEmailDomain"))?.SettingValue
                 ?? "company.com";
 
-            var usernameOnly = currentUser.Contains('\\')
-                ? currentUser.Split('\\')[1]
-                : currentUser;
+            // Prefer the identity when it is already an email; otherwise build DOMAIN\user → user@domain
+            string toEmail;
+            if (currentUser.Contains('@'))
+            {
+                toEmail = currentUser;
+            }
+            else
+            {
+                var usernameOnly = currentUser.Contains('\\')
+                    ? currentUser.Split('\\')[1]
+                    : currentUser;
+                toEmail = $"{usernameOnly}@{emailDomain}";
+            }
 
             var fakeReq = new OutsourceRequest
             {
@@ -176,7 +186,7 @@ namespace OutsourceRequestApp.Controllers
             var fakeApprover = new ApproverRole
             {
                 FullName = currentUser,
-                Email    = $"{usernameOnly}@{emailDomain}"
+                Email    = toEmail
             };
 
             _ = Task.Run(() => _email.SendToApprover(fakeReq, fakeApprover));

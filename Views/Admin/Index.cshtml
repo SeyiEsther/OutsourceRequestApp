@@ -170,28 +170,54 @@
             </div>
         }
 
-        <!-- Reminder interval -->
-        <div class="role-card">
-            <div class="rc-stage">Reminders</div>
-            <div class="rc-title">Email Reminder Interval</div>
-            <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.65;">
-                Send a chase email to the current approver if they haven't acted after this many hours.
-            </p>
-            <form asp-action="SaveSettings" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="smtpHost"     value="@ViewBag.SmtpHost" />
-                <input type="hidden" name="smtpPort"     value="@ViewBag.SmtpPort" />
-                <input type="hidden" name="smtpFrom"     value="@ViewBag.SmtpFrom" />
-                <input type="hidden" name="smtpFromName" value="@ViewBag.SmtpFromName" />
-                <input type="hidden" name="emailDomain"  value="@ViewBag.EmailDomain" />
+    </div>
+
+    <!-- Email / SMTP Settings -->
+    <div class="admin-label">Email settings</div>
+    <div class="smtp-card">
+        <p class="smtp-hint">
+            Configure the outgoing mail server so the portal can send approval notifications and reminders.<br/>
+            Ask IT for your internal SMTP relay (often <code>smtp.yourcompany.local</code> on port 25).
+            Leave credentials blank — Windows integrated auth is used by default. Leave SMTP Host blank to disable outgoing email.
+        </p>
+        <form asp-action="SaveSettings" method="post">
+            @Html.AntiForgeryToken()
+            <div class="smtp-grid">
+                <div class="field">
+                    <label>SMTP Host</label>
+                    <input name="smtpHost" value="@ViewBag.SmtpHost" placeholder="smtp.yourcompany.local" />
+                </div>
+                <div class="field">
+                    <label>SMTP Port</label>
+                    <input name="smtpPort" type="number" value="@(ViewBag.SmtpPort ?? "25")" placeholder="25" />
+                </div>
+                <div class="field">
+                    <label>From address</label>
+                    <input name="smtpFrom" type="email" value="@ViewBag.SmtpFrom" placeholder="outsource-portal@company.com" />
+                </div>
+                <div class="field">
+                    <label>From name</label>
+                    <input name="smtpFromName" value="@(ViewBag.SmtpFromName ?? "Outsource Portal")" placeholder="Outsource Portal" />
+                </div>
+                <div class="field">
+                    <label>Company email domain</label>
+                    <input name="emailDomain" value="@ViewBag.EmailDomain" placeholder="company.com" />
+                </div>
                 <div class="field">
                     <label>Hours before reminder</label>
                     <input name="reminderHours" type="number" min="1" value="@(ViewBag.ReminderHours ?? "24")" />
                 </div>
-                <button type="submit" class="btn-save">Save</button>
-            </form>
-        </div>
-
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">Save email settings</button>
+            </div>
+        </form>
+        <form asp-action="TestEmail" method="post" style="margin-top:10px;">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-save" style="background:var(--card2);color:var(--text);border:1px solid var(--border2);">
+                Send test email to me
+            </button>
+        </form>
     </div>
 
     <!-- Admin Users -->
