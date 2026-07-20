@@ -44,7 +44,7 @@ namespace OutsourceRequestApp.Models
         public string? MdReviewedBy { get; set; }
         public string? MdComments { get; set; }
 
-        // Section 2 fields (Supply Chain fills these)
+        // Cost Compact fields (Strategic Buyer fills these)
         public bool? PpapRequired { get; set; }
         public decimal? CostInhousePerMonth { get; set; }
         public decimal? CostOutsourcePerMonth { get; set; }

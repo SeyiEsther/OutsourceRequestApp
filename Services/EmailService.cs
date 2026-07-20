@@ -9,11 +9,13 @@ namespace OutsourceRequestApp.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<EmailService> _logger;
+        private readonly IConfiguration _config;
 
-        public EmailService(AppDbContext db, ILogger<EmailService> logger)
+        public EmailService(AppDbContext db, ILogger<EmailService> logger, IConfiguration config)
         {
-            _db = db;
+            _db     = db;
             _logger = logger;
+            _config = config;
         }
 
         // ----------------------------------------------------------------
@@ -64,6 +66,10 @@ namespace OutsourceRequestApp.Services
 
         private string RequesterEmail(OutsourceRequest req)
         {
+            // Already an email address (common with email-based identity / dev impersonation)
+            if (req.CreatedByUsername.Contains('@'))
+                return req.CreatedByUsername;
+
             var domain = _db.AppSettings
                 .FirstOrDefault(s => s.SettingKey == "CompanyEmailDomain")?.SettingValue
                 ?? "company.com";
@@ -75,11 +81,8 @@ namespace OutsourceRequestApp.Services
             return $"{username}@{domain}";
         }
 
-        private static string AppUrl()
-        {
-            // Adjust this if your server address changes
-            return "http://csm-srv-16:5200";
-        }
+        private string AppUrl() =>
+            _config["BaseAddress"]?.TrimEnd('/') ?? "http://localhost:5200";
 
         // ----------------------------------------------------------------
         // Public send methods
@@ -127,7 +130,7 @@ This is an automated message — please do not reply.
 
         /// <summary>
         /// Confirms to the original requester that their request has been submitted
-        /// and is awaiting Supply Chain review.
+        /// and is awaiting Work Preparation review.
         /// </summary>
         public void SendSubmissionConfirmation(OutsourceRequest req)
         {
@@ -144,7 +147,7 @@ This is an automated message — please do not reply.
                     Subject = $"Request received — OSR-{req.RequestId:000000}",
                     Body    = $@"Hi,
 
-Your outsource request has been submitted and is now awaiting Supply Chain review.
+Your outsource request has been submitted and is now awaiting Work Preparation review.
 
   Request:   OSR-{req.RequestId:000000}
   Part:      {req.PartNumber} — {req.SapDescription}
@@ -213,7 +216,7 @@ This is an automated message — please do not reply.
         }
 
         /// <summary>
-        /// Notifies the SC approver that a request has been withdrawn by the requester.
+        /// Notifies the current-stage approver that a request has been withdrawn by the requester.
         /// </summary>
         public void SendCancellationNotice(OutsourceRequest req, ApproverRole scApprover)
         {
