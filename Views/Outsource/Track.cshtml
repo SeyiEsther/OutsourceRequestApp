@@ -590,7 +590,22 @@
                     ? 'Approve this request and pass it to the next stage?'
                     : 'Reject this request? This action cannot be undone.';
                 const ok = await SiteModal.confirm(msg, isApprove ? 'Approve Request' : 'Reject Request');
-                if (ok) this.closest('form').submit();
+                if (ok) {
+                    const form = this.closest('form');
+                    // Programmatic form.submit() does NOT include the clicked button's
+                    // name/value, so inject the action explicitly before submitting —
+                    // otherwise the server receives a null action and treats every
+                    // decision as a rejection.
+                    let actionField = form.querySelector('input[name="action"]');
+                    if (!actionField) {
+                        actionField = document.createElement('input');
+                        actionField.type = 'hidden';
+                        actionField.name = 'action';
+                        form.appendChild(actionField);
+                    }
+                    actionField.value = this.value;
+                    form.submit();
+                }
             });
         });
 

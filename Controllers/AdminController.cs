@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
 using OutsourceRequestApp.Services;
@@ -12,12 +13,15 @@ namespace OutsourceRequestApp.Controllers
     public class AdminController : Controller
     {
         private readonly AppDbContext _db;
-        private readonly EmailService _email;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<AdminController> _logger;
 
-        public AdminController(AppDbContext db, EmailService email)
+        public AdminController(AppDbContext db, IServiceScopeFactory scopeFactory,
+                               ILogger<AdminController> logger)
         {
-            _db    = db;
-            _email = email;
+            _db           = db;
+            _scopeFactory = scopeFactory;
+            _logger       = logger;
         }
 
         // ----------------------------------------------------------------
@@ -159,9 +163,12 @@ namespace OutsourceRequestApp.Controllers
                 .FirstOrDefaultAsync(s => s.SettingKey == "CompanyEmailDomain"))?.SettingValue
                 ?? "company.com";
 
-            var usernameOnly = currentUser.Contains('\\')
-                ? currentUser.Split('\\')[1]
-                : currentUser;
+            // Under Windows Authentication the signed-in identity is already the
+            // caller's AD e-mail; only fall back to username@domain for legacy
+            // DOMAIN\user or bare-username identities.
+            var testAddress = currentUser.Contains('@')
+                ? currentUser
+                : $"{(currentUser.Contains('\\') ? currentUser.Split('\\')[1] : currentUser)}@{emailDomain}";
 
             var fakeReq = new OutsourceRequest
             {
@@ -176,10 +183,22 @@ namespace OutsourceRequestApp.Controllers
             var fakeApprover = new ApproverRole
             {
                 FullName = currentUser,
-                Email    = $"{usernameOnly}@{emailDomain}"
+                Email    = testAddress
             };
 
-            _ = Task.Run(() => _email.SendToApprover(fakeReq, fakeApprover));
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var email = scope.ServiceProvider.GetRequiredService<EmailService>();
+                    email.SendToApprover(fakeReq, fakeApprover);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Test email dispatch failed.");
+                }
+            });
 
             TempData["Success"] = $"Test email sent to {fakeApprover.Email}";
             return RedirectToAction(nameof(Index));

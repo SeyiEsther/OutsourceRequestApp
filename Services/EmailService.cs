@@ -64,14 +64,19 @@ namespace OutsourceRequestApp.Services
 
         private string RequesterEmail(OutsourceRequest req)
         {
+            var raw = req.CreatedByUsername ?? "";
+
+            // Under Windows Authentication the app resolves the caller's AD e-mail,
+            // so CreatedByUsername is normally already a full e-mail address.
+            if (raw.Contains('@')) return raw;
+
+            // Fallback for legacy rows stored as DOMAIN\user (or a bare username):
+            // build an address from the configured company e-mail domain.
             var domain = _db.AppSettings
                 .FirstOrDefault(s => s.SettingKey == "CompanyEmailDomain")?.SettingValue
                 ?? "company.com";
 
-            var username = req.CreatedByUsername.Contains('\\')
-                ? req.CreatedByUsername.Split('\\')[1]
-                : req.CreatedByUsername;
-
+            var username = raw.Contains('\\') ? raw.Split('\\')[1] : raw;
             return $"{username}@{domain}";
         }
 

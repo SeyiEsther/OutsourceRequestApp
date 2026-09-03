@@ -10,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddScoped<EmailService>();
 
 // Main application database
@@ -45,6 +47,16 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// Windows Authentication is enforced by IIS at the site level (enable Windows
+// Authentication and disable Anonymous Authentication on the IIS app), which
+// populates HttpContext.User with the caller's DOMAIN\user identity when hosted
+// in-process. The app matches requesters/approvers/admins
+// by e-mail, so this middleware resolves the AD e-mail for the Windows account
+// and republishes the principal — leaving User.Identity.Name as the e-mail address
+// throughout the app. No-op in Development (the impersonation principal below is
+// already e-mail based).
+app.UseMiddleware<WindowsIdentityEmailMiddleware>();
 
 // Dev-only: no real authentication provider runs locally, so User.Identity.Name
 // would otherwise always be empty. Set DevImpersonateUser in

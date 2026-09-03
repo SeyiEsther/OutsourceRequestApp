@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
 using OutsourceRequestApp.Services;
@@ -15,7 +16,8 @@ namespace OutsourceRequestApp.Controllers
     {
         private readonly AppDbContext _db;
         private readonly WarehouseDbContext _warehouseDb;
-        private readonly EmailService _email;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<OutsourceController> _logger;
 
         private static readonly string[] AllowedMimeTypes =
         {
@@ -25,11 +27,54 @@ namespace OutsourceRequestApp.Controllers
         private const long MaxUploadBytes = 10 * 1024 * 1024; // 10 MB
         private const int  PageSize       = 25;
 
-        public OutsourceController(AppDbContext db, WarehouseDbContext warehouseDb, EmailService email)
+        public OutsourceController(AppDbContext db, WarehouseDbContext warehouseDb,
+                                   IServiceScopeFactory scopeFactory,
+                                   ILogger<OutsourceController> logger)
         {
-            _db          = db;
-            _warehouseDb = warehouseDb;
-            _email       = email;
+            _db           = db;
+            _warehouseDb  = warehouseDb;
+            _scopeFactory = scopeFactory;
+            _logger       = logger;
+        }
+
+        // ----------------------------------------------------------------
+        // Dispatches an email on a background task using its OWN DI scope.
+        // The controller's own EmailService/DbContext are disposed as soon as
+        // the HTTP response completes, so a fire-and-forget Task.Run that closed
+        // over them would hit an ObjectDisposedException and silently drop the
+        // email. Resolving a fresh EmailService inside the task avoids that.
+        // ----------------------------------------------------------------
+        private void QueueEmail(Action<EmailService> send)
+        {
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var email = scope.ServiceProvider.GetRequiredService<EmailService>();
+                    send(email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Background email dispatch failed.");
+                }
+            });
+        }
+
+        // ----------------------------------------------------------------
+        // Returns true only if the signed-in user is the person assigned to
+        // the given approval role. Used to authorise every state-changing
+        // review action server-side (the GET screens also check this, but a
+        // POST must never trust that the GET gate was passed).
+        // ----------------------------------------------------------------
+        private async Task<bool> IsAssignedApproverAsync(string roleKey)
+        {
+            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == roleKey);
+            var currentUser = User?.Identity?.Name ?? "";
+
+            return approver != null
+                && !string.IsNullOrEmpty(approver.Email)
+                && approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
         }
 
         // ----------------------------------------------------------------
@@ -141,10 +186,10 @@ namespace OutsourceRequestApp.Controllers
 
             // Fire-and-forget emails (don't block the HTTP response)
             var wpApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "WP");
-            _ = Task.Run(() =>
+            QueueEmail(email =>
             {
-                if (wpApprover != null) _email.SendToApprover(model, wpApprover);
-                _email.SendSubmissionConfirmation(model);
+                if (wpApprover != null) email.SendToApprover(model, wpApprover);
+                email.SendSubmissionConfirmation(model);
             });
 
             return RedirectToAction(nameof(Track), new { id = model.RequestId });
@@ -203,7 +248,7 @@ namespace OutsourceRequestApp.Controllers
             // Notify the Work Prep approver so they don't review a withdrawn request
             var wpApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "WP");
             if (wpApprover != null)
-                _ = Task.Run(() => _email.SendCancellationNotice(request, wpApprover));
+                QueueEmail(email => email.SendCancellationNotice(request, wpApprover));
 
             return RedirectToAction(nameof(MyRequests));
         }
@@ -230,8 +275,17 @@ namespace OutsourceRequestApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewWorkPrep(int id, string? comments, string action)
         {
+            if (action != "approve" && action != "reject")
+                return BadRequest("Invalid action.");
+
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
+
+            if (!await IsAssignedApproverAsync("WP"))
+                return StatusCode(403, "You are not assigned as the Work Preparation approver.");
+
+            if (request.Status != RequestStatus.Submitted)
+                return BadRequest("This request is not awaiting Work Preparation review.");
 
             var currentUser = User?.Identity?.Name ?? "";
             request.JFSignedBy   = currentUser;
@@ -241,10 +295,10 @@ namespace OutsourceRequestApp.Controllers
             {
                 request.Status = RequestStatus.ProductionPending;
                 var nextApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "PROD");
-                _ = Task.Run(() =>
+                QueueEmail(email =>
                 {
-                    if (nextApprover != null) _email.SendToApprover(request, nextApprover);
-                    _email.SendConfirmationToRequester(request, "Work Preparation", true, comments ?? "");
+                    if (nextApprover != null) email.SendToApprover(request, nextApprover);
+                    email.SendConfirmationToRequester(request, "Work Preparation", true, comments ?? "");
                 });
             }
             else
@@ -253,8 +307,8 @@ namespace OutsourceRequestApp.Controllers
                 request.RejectedBy      = currentUser;
                 request.RejectedAt      = DateTime.Now;
                 request.RejectionReason = comments;
-                _ = Task.Run(() =>
-                    _email.SendConfirmationToRequester(request, "Work Preparation", false, comments ?? ""));
+                QueueEmail(email =>
+                    email.SendConfirmationToRequester(request, "Work Preparation", false, comments ?? ""));
             }
 
             await _db.SaveChangesAsync();
@@ -283,8 +337,17 @@ namespace OutsourceRequestApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewProduction(int id, string? comments, string action)
         {
+            if (action != "approve" && action != "reject")
+                return BadRequest("Invalid action.");
+
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
+
+            if (!await IsAssignedApproverAsync("PROD"))
+                return StatusCode(403, "You are not assigned as the Production approver.");
+
+            if (request.Status != RequestStatus.ProductionPending)
+                return BadRequest("This request is not awaiting Production review.");
 
             var currentUser = User?.Identity?.Name ?? "";
             request.LJSignedBy   = currentUser;
@@ -294,10 +357,10 @@ namespace OutsourceRequestApp.Controllers
             {
                 request.Status = RequestStatus.CostCompactPending;
                 var nextApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "BUYER");
-                _ = Task.Run(() =>
+                QueueEmail(email =>
                 {
-                    if (nextApprover != null) _email.SendToApprover(request, nextApprover);
-                    _email.SendConfirmationToRequester(request, "Production", true, comments ?? "");
+                    if (nextApprover != null) email.SendToApprover(request, nextApprover);
+                    email.SendConfirmationToRequester(request, "Production", true, comments ?? "");
                 });
             }
             else
@@ -306,8 +369,8 @@ namespace OutsourceRequestApp.Controllers
                 request.RejectedBy      = currentUser;
                 request.RejectedAt      = DateTime.Now;
                 request.RejectionReason = comments;
-                _ = Task.Run(() =>
-                    _email.SendConfirmationToRequester(request, "Production", false, comments ?? ""));
+                QueueEmail(email =>
+                    email.SendConfirmationToRequester(request, "Production", false, comments ?? ""));
             }
 
             await _db.SaveChangesAsync();
@@ -338,8 +401,17 @@ namespace OutsourceRequestApp.Controllers
                                                 decimal? costOutsource, string? costComments,
                                                 string? scComments, string action)
         {
+            if (action != "approve" && action != "reject")
+                return BadRequest("Invalid action.");
+
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
+
+            if (!await IsAssignedApproverAsync("BUYER"))
+                return StatusCode(403, "You are not assigned as the Strategic Buyer approver.");
+
+            if (request.Status != RequestStatus.CostCompactPending)
+                return BadRequest("This request is not awaiting Cost Compact review.");
 
             var currentUser = User?.Identity?.Name ?? "";
 
@@ -355,10 +427,10 @@ namespace OutsourceRequestApp.Controllers
             {
                 request.Status = RequestStatus.SourcingPending;
                 var nextApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "SOURCING");
-                _ = Task.Run(() =>
+                QueueEmail(email =>
                 {
-                    if (nextApprover != null) _email.SendToApprover(request, nextApprover);
-                    _email.SendConfirmationToRequester(request, "Cost Compact", true, scComments ?? "");
+                    if (nextApprover != null) email.SendToApprover(request, nextApprover);
+                    email.SendConfirmationToRequester(request, "Cost Compact", true, scComments ?? "");
                 });
             }
             else
@@ -367,8 +439,8 @@ namespace OutsourceRequestApp.Controllers
                 request.RejectedBy      = currentUser;
                 request.RejectedAt      = DateTime.Now;
                 request.RejectionReason = scComments;
-                _ = Task.Run(() =>
-                    _email.SendConfirmationToRequester(request, "Cost Compact", false, scComments ?? ""));
+                QueueEmail(email =>
+                    email.SendConfirmationToRequester(request, "Cost Compact", false, scComments ?? ""));
             }
 
             await _db.SaveChangesAsync();
@@ -397,8 +469,17 @@ namespace OutsourceRequestApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewSourcing(int id, string? comments, string action)
         {
+            if (action != "approve" && action != "reject")
+                return BadRequest("Invalid action.");
+
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
+
+            if (!await IsAssignedApproverAsync("SOURCING"))
+                return StatusCode(403, "You are not assigned as the Sourcing approver.");
+
+            if (request.Status != RequestStatus.SourcingPending)
+                return BadRequest("This request is not awaiting Sourcing review.");
 
             var currentUser = User?.Identity?.Name ?? "";
             request.SGSignedBy   = currentUser;
@@ -408,10 +489,10 @@ namespace OutsourceRequestApp.Controllers
             {
                 request.Status = RequestStatus.MdPending;
                 var nextApprover = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "MD");
-                _ = Task.Run(() =>
+                QueueEmail(email =>
                 {
-                    if (nextApprover != null) _email.SendToApprover(request, nextApprover);
-                    _email.SendConfirmationToRequester(request, "Sourcing", true, comments ?? "");
+                    if (nextApprover != null) email.SendToApprover(request, nextApprover);
+                    email.SendConfirmationToRequester(request, "Sourcing", true, comments ?? "");
                 });
             }
             else
@@ -420,8 +501,8 @@ namespace OutsourceRequestApp.Controllers
                 request.RejectedBy      = currentUser;
                 request.RejectedAt      = DateTime.Now;
                 request.RejectionReason = comments;
-                _ = Task.Run(() =>
-                    _email.SendConfirmationToRequester(request, "Sourcing", false, comments ?? ""));
+                QueueEmail(email =>
+                    email.SendConfirmationToRequester(request, "Sourcing", false, comments ?? ""));
             }
 
             await _db.SaveChangesAsync();
@@ -438,11 +519,16 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            var mdApprover  = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "MD");
-            var currentUser = User?.Identity?.Name ?? "";
+            if (action != "approve" && action != "reject")
+                return BadRequest("Invalid action.");
 
-            if (mdApprover == null || !mdApprover.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (!await IsAssignedApproverAsync("MD"))
                 return StatusCode(403, "You are not assigned as the Managing Director approver.");
+
+            if (request.Status != RequestStatus.MdPending)
+                return BadRequest("This request is not awaiting MD approval.");
+
+            var currentUser = User?.Identity?.Name ?? "";
 
             request.MdReviewedAt = DateTime.Now;
             request.MdReviewedBy = currentUser;
@@ -456,8 +542,8 @@ namespace OutsourceRequestApp.Controllers
                 request.RejectionReason = mdComments;
             }
 
-            _ = Task.Run(() =>
-                _email.SendConfirmationToRequester(request, "Managing Director",
+            QueueEmail(email =>
+                email.SendConfirmationToRequester(request, "Managing Director",
                     action == "approve", mdComments ?? ""));
 
             await _db.SaveChangesAsync();
