@@ -2,8 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
-using System;
-using System.Linq;
+using OutsourceRequestApp.Services;
 using System.Threading.Tasks;
 
 namespace OutsourceRequestApp.ViewComponents
@@ -24,35 +23,26 @@ namespace OutsourceRequestApp.ViewComponents
     public class NavContextViewComponent : ViewComponent
     {
         private readonly AppDbContext _db;
+        private readonly AccessControlService _access;
 
-        public NavContextViewComponent(AppDbContext db)
+        public NavContextViewComponent(AppDbContext db, AccessControlService access)
         {
-            _db = db;
+            _db     = db;
+            _access = access;
         }
 
         public async Task<IViewComponentResult> InvokeAsync()
         {
-            var currentUser = HttpContext.User?.Identity?.Name ?? "";
-
-            // ── Admin check ──────────────────────────────────────────────
-            var adminSetting = await _db.AppSettings
-                .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");
-
-            var isAdmin = (adminSetting?.SettingValue ?? "")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Any(a => a.Trim().Equals(currentUser, StringComparison.OrdinalIgnoreCase));
-
-            // ── Approver role check ──────────────────────────────────────
-            var approverRole = await _db.ApproverRoles
-                .FirstOrDefaultAsync(r =>
-                    r.Email != null &&
-                    r.Email.ToLower() == currentUser.ToLower());
+            var isAdmin      = await _access.IsAdminAsync();
+            var approverRole = await _access.GetMyApproverRoleAsync();
 
             int    pendingCount  = 0;
             string approverLabel = "";
 
             if (approverRole != null)
             {
+                // Shorter labels than the dashboard's full job titles — this is a
+                // narrow sidebar, not the Home page.
                 approverLabel = approverRole.RoleKey switch
                 {
                     "WP"       => "Work Preparation",
@@ -63,15 +53,7 @@ namespace OutsourceRequestApp.ViewComponents
                     _          => approverRole.RoleDisplayName
                 };
 
-                var statusFilter = approverRole.RoleKey switch
-                {
-                    "WP"       => RequestStatus.Submitted,
-                    "PROD"     => RequestStatus.ProductionPending,
-                    "BUYER"    => RequestStatus.CostCompactPending,
-                    "SOURCING" => RequestStatus.SourcingPending,
-                    "MD"       => RequestStatus.MdPending,
-                    _          => ""
-                };
+                var statusFilter = RequestStatus.PendingStatusForRole(approverRole.RoleKey);
 
                 if (!string.IsNullOrEmpty(statusFilter))
                     pendingCount = await _db.OutsourceRequests

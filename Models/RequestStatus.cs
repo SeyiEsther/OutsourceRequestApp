@@ -51,5 +51,45 @@ namespace OutsourceRequestApp.Models
         /// <summary>Returns true if the request is still awaiting any action.</summary>
         public static bool IsPending(string? status) =>
             status is Submitted or ProductionPending or CostCompactPending or SourcingPending or MdPending;
+
+        /// <summary>
+        /// The status a request sits in while awaiting the given approver role
+        /// (WP/PROD/BUYER/SOURCING/MD). Single source of truth for this mapping —
+        /// previously duplicated inline in four different places (MyApprovals,
+        /// HomeController, NavContextViewComponent, ReminderService), which made
+        /// it easy for one copy to drift from the others.
+        /// </summary>
+        public static string? PendingStatusForRole(string? roleKey) => roleKey switch
+        {
+            "WP"       => Submitted,
+            "PROD"     => ProductionPending,
+            "BUYER"    => CostCompactPending,
+            "SOURCING" => SourcingPending,
+            "MD"       => MdPending,
+            _          => null
+        };
+
+        /// <summary>The inverse of <see cref="PendingStatusForRole"/> — which role's
+        /// action a pending status is currently waiting on.</summary>
+        public static string? RoleKeyForPendingStatus(string? status) => status switch
+        {
+            Submitted          => "WP",
+            ProductionPending  => "PROD",
+            CostCompactPending => "BUYER",
+            SourcingPending    => "SOURCING",
+            MdPending          => "MD",
+            _                  => null
+        };
+
+        /// <summary>Human-friendly job title for an approver role key.</summary>
+        public static string RoleLabel(string? roleKey) => roleKey switch
+        {
+            "WP"       => "Work Preparation Manager",
+            "PROD"     => "Production Manager",
+            "BUYER"    => "Strategic Buyer",
+            "SOURCING" => "Sourcing & Procurement",
+            "MD"       => "Managing Director",
+            _          => ""
+        };
     }
 }

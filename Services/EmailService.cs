@@ -8,11 +8,13 @@ namespace OutsourceRequestApp.Services
     public class EmailService
     {
         private readonly AppDbContext _db;
+        private readonly ActiveDirectoryLookup _ad;
         private readonly ILogger<EmailService> _logger;
 
-        public EmailService(AppDbContext db, ILogger<EmailService> logger)
+        public EmailService(AppDbContext db, ActiveDirectoryLookup ad, ILogger<EmailService> logger)
         {
             _db = db;
+            _ad = ad;
             _logger = logger;
         }
 
@@ -70,13 +72,20 @@ namespace OutsourceRequestApp.Services
             // so CreatedByUsername is normally already a full e-mail address.
             if (raw.Contains('@')) return raw;
 
-            // Fallback for legacy rows stored as DOMAIN\user (or a bare username):
-            // build an address from the configured company e-mail domain.
+            // Row stored as DOMAIN\user or a bare username — AD resolution failed
+            // at submission time (see WindowsIdentityEmailMiddleware). Retry it here:
+            // the lookup is cached with an hourly TTL, so a transient AD hiccup or a
+            // since-corrected `mail` attribute can resolve correctly by the time a
+            // later stage e-mails this requester, even if it didn't at submit time.
+            var resolved = _ad.ResolveEmail(raw);
+            if (!string.IsNullOrEmpty(resolved)) return resolved;
+
+            // Last resort: build an address from the configured company e-mail domain.
             var domain = _db.AppSettings
                 .FirstOrDefault(s => s.SettingKey == "CompanyEmailDomain")?.SettingValue
                 ?? "company.com";
 
-            var username = raw.Contains('\\') ? raw.Split('\\')[1] : raw;
+            var username = ActiveDirectoryLookup.NormalizeAccountName(raw);
             return $"{username}@{domain}";
         }
 

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
+using OutsourceRequestApp.Services;
 
 namespace OutsourceRequestApp.Controllers
 {
@@ -13,11 +14,13 @@ namespace OutsourceRequestApp.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly AppDbContext            _db;
+        private readonly AccessControlService    _access;
 
-        public HomeController(ILogger<HomeController> logger, AppDbContext db)
+        public HomeController(ILogger<HomeController> logger, AppDbContext db, AccessControlService access)
         {
             _logger = logger;
             _db     = db;
+            _access = access;
         }
 
         public async Task<IActionResult> Index()
@@ -25,43 +28,21 @@ namespace OutsourceRequestApp.Controllers
             var currentUser = User?.Identity?.Name ?? "";
 
             // ── Admin check ──────────────────────────────────────────────
-            var adminSetting = await _db.AppSettings
-                .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");
-
-            ViewBag.IsAdmin = (adminSetting?.SettingValue ?? "")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Any(a => a.Trim().Equals(currentUser, StringComparison.OrdinalIgnoreCase));
+            ViewBag.IsAdmin = await _access.IsAdminAsync();
 
             // ── Approver role check ──────────────────────────────────────
-            var approverRole = await _db.ApproverRoles
-                .FirstOrDefaultAsync(r =>
-                    r.Email != null &&
-                    r.Email.ToLower() == currentUser.ToLower());
+            var approverRole = await _access.GetMyApproverRoleAsync();
 
             ViewBag.IsApprover      = approverRole != null;
             ViewBag.ApproverRoleKey = approverRole?.RoleKey ?? "";
-            ViewBag.ApproverLabel   = approverRole?.RoleKey switch
-            {
-                "WP"       => "Work Preparation Manager",
-                "PROD"     => "Production Manager",
-                "BUYER"    => "Strategic Buyer",
-                "SOURCING" => "Sourcing & Procurement",
-                "MD"       => "Managing Director",
-                _          => approverRole?.RoleDisplayName ?? ""
-            };
+            ViewBag.ApproverLabel   = approverRole != null
+                ? (RequestStatus.RoleLabel(approverRole.RoleKey) is { Length: > 0 } label ? label : approverRole.RoleDisplayName)
+                : "";
 
             // Pending count + live queue preview for this approver
             if (approverRole != null)
             {
-                var statusFilter = approverRole.RoleKey switch
-                {
-                    "WP"       => RequestStatus.Submitted,
-                    "PROD"     => RequestStatus.ProductionPending,
-                    "BUYER"    => RequestStatus.CostCompactPending,
-                    "SOURCING" => RequestStatus.SourcingPending,
-                    "MD"       => RequestStatus.MdPending,
-                    _          => ""
-                };
+                var statusFilter = RequestStatus.PendingStatusForRole(approverRole.RoleKey);
 
                 if (!string.IsNullOrEmpty(statusFilter))
                 {

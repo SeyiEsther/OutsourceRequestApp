@@ -83,16 +83,7 @@ namespace OutsourceRequestApp.Services
 
                 foreach (var request in pending)
                 {
-                    var roleKey = request.Status switch
-                    {
-                        RequestStatus.Submitted          => "WP",
-                        RequestStatus.ProductionPending  => "PROD",
-                        RequestStatus.CostCompactPending => "BUYER",
-                        RequestStatus.SourcingPending     => "SOURCING",
-                        RequestStatus.MdPending           => "MD",
-                        _                                  => null
-                    };
-
+                    var roleKey = RequestStatus.RoleKeyForPendingStatus(request.Status);
                     if (roleKey == null) continue;
 
                     var approver = db.ApproverRoles.FirstOrDefault(r => r.RoleKey == roleKey);

@@ -17,6 +17,7 @@ namespace OutsourceRequestApp.Controllers
         private readonly AppDbContext _db;
         private readonly WarehouseDbContext _warehouseDb;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly AccessControlService _access;
         private readonly ILogger<OutsourceController> _logger;
 
         private static readonly string[] AllowedMimeTypes =
@@ -28,12 +29,13 @@ namespace OutsourceRequestApp.Controllers
         private const int  PageSize       = 25;
 
         public OutsourceController(AppDbContext db, WarehouseDbContext warehouseDb,
-                                   IServiceScopeFactory scopeFactory,
+                                   IServiceScopeFactory scopeFactory, AccessControlService access,
                                    ILogger<OutsourceController> logger)
         {
             _db           = db;
             _warehouseDb  = warehouseDb;
             _scopeFactory = scopeFactory;
+            _access       = access;
             _logger       = logger;
         }
 
@@ -59,22 +61,6 @@ namespace OutsourceRequestApp.Controllers
                     _logger.LogError(ex, "Background email dispatch failed.");
                 }
             });
-        }
-
-        // ----------------------------------------------------------------
-        // Returns true only if the signed-in user is the person assigned to
-        // the given approval role. Used to authorise every state-changing
-        // review action server-side (the GET screens also check this, but a
-        // POST must never trust that the GET gate was passed).
-        // ----------------------------------------------------------------
-        private async Task<bool> IsAssignedApproverAsync(string roleKey)
-        {
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == roleKey);
-            var currentUser = User?.Identity?.Name ?? "";
-
-            return approver != null
-                && !string.IsNullOrEmpty(approver.Email)
-                && approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
         }
 
         // ----------------------------------------------------------------
@@ -217,6 +203,18 @@ namespace OutsourceRequestApp.Controllers
 
             ViewBag.Roles           = await _db.ApproverRoles.ToListAsync();
             ViewBag.CurrentUsername = User?.Identity?.Name ?? "";
+
+            // Computed via AccessControlService (email match, with an AD
+            // display-name fallback) so the approve/reject form's visibility
+            // always agrees with what the POST handlers actually authorise —
+            // a raw e-mail compare in the view could show/hide the wrong thing
+            // whenever the fallback match is what actually grants access.
+            ViewBag.IsWpApprover       = await _access.IsAssignedApproverAsync("WP");
+            ViewBag.IsProdApprover     = await _access.IsAssignedApproverAsync("PROD");
+            ViewBag.IsBuyerApprover    = await _access.IsAssignedApproverAsync("BUYER");
+            ViewBag.IsSourcingApprover = await _access.IsAssignedApproverAsync("SOURCING");
+            ViewBag.IsMdApprover       = await _access.IsAssignedApproverAsync("MD");
+
             return View(request);
         }
 
@@ -262,10 +260,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "WP");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (!await _access.IsAssignedApproverAsync("WP"))
                 return StatusCode(403, "You are not assigned as the Work Preparation approver.");
 
             return View(request);
@@ -281,7 +276,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            if (!await IsAssignedApproverAsync("WP"))
+            if (!await _access.IsAssignedApproverAsync("WP"))
                 return StatusCode(403, "You are not assigned as the Work Preparation approver.");
 
             if (request.Status != RequestStatus.Submitted)
@@ -324,10 +319,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "PROD");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (!await _access.IsAssignedApproverAsync("PROD"))
                 return StatusCode(403, "You are not assigned as the Production approver.");
 
             return View(request);
@@ -343,7 +335,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            if (!await IsAssignedApproverAsync("PROD"))
+            if (!await _access.IsAssignedApproverAsync("PROD"))
                 return StatusCode(403, "You are not assigned as the Production approver.");
 
             if (request.Status != RequestStatus.ProductionPending)
@@ -386,10 +378,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "BUYER");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (!await _access.IsAssignedApproverAsync("BUYER"))
                 return StatusCode(403, "You are not assigned as the Strategic Buyer approver.");
 
             return View(request);
@@ -407,7 +396,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            if (!await IsAssignedApproverAsync("BUYER"))
+            if (!await _access.IsAssignedApproverAsync("BUYER"))
                 return StatusCode(403, "You are not assigned as the Strategic Buyer approver.");
 
             if (request.Status != RequestStatus.CostCompactPending)
@@ -456,10 +445,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            var approver    = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == "SOURCING");
-            var currentUser = User?.Identity?.Name ?? "";
-
-            if (approver == null || !approver.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase))
+            if (!await _access.IsAssignedApproverAsync("SOURCING"))
                 return StatusCode(403, "You are not assigned as the Sourcing approver.");
 
             return View(request);
@@ -475,7 +461,7 @@ namespace OutsourceRequestApp.Controllers
             var request = await _db.OutsourceRequests.FirstOrDefaultAsync(r => r.RequestId == id);
             if (request == null) return NotFound();
 
-            if (!await IsAssignedApproverAsync("SOURCING"))
+            if (!await _access.IsAssignedApproverAsync("SOURCING"))
                 return StatusCode(403, "You are not assigned as the Sourcing approver.");
 
             if (request.Status != RequestStatus.SourcingPending)
@@ -522,7 +508,7 @@ namespace OutsourceRequestApp.Controllers
             if (action != "approve" && action != "reject")
                 return BadRequest("Invalid action.");
 
-            if (!await IsAssignedApproverAsync("MD"))
+            if (!await _access.IsAssignedApproverAsync("MD"))
                 return StatusCode(403, "You are not assigned as the Managing Director approver.");
 
             if (request.Status != RequestStatus.MdPending)
@@ -555,11 +541,9 @@ namespace OutsourceRequestApp.Controllers
         // ----------------------------------------------------------------
         public async Task<IActionResult> MyApprovals()
         {
-            var currentUser = User?.Identity?.Name ?? "";
-            var roles       = await _db.ApproverRoles.ToListAsync();
+            var currentUser = _access.CurrentUserName;
 
-            var myRole = roles.FirstOrDefault(r =>
-                r.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase));
+            var myRole = await _access.GetMyApproverRoleAsync();
 
             if (myRole == null)
             {
@@ -570,15 +554,7 @@ namespace OutsourceRequestApp.Controllers
                 return View();
             }
 
-            var statusFilter = myRole.RoleKey switch
-            {
-                "WP"       => RequestStatus.Submitted,
-                "PROD"     => RequestStatus.ProductionPending,
-                "BUYER"    => RequestStatus.CostCompactPending,
-                "SOURCING" => RequestStatus.SourcingPending,
-                "MD"       => RequestStatus.MdPending,
-                _          => ""
-            };
+            var statusFilter = RequestStatus.PendingStatusForRole(myRole.RoleKey) ?? "";
 
             var pending = await _db.OutsourceRequests
                 .Where(r => r.Status == statusFilter)

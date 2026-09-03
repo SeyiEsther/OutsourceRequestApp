@@ -1,36 +1,33 @@
-using System.Collections.Concurrent;
-using System.DirectoryServices.AccountManagement;
-using System.Runtime.Versioning;
 using System.Security.Claims;
 
 namespace OutsourceRequestApp.Services
 {
     /// <summary>
-    /// The app identifies requesters, approvers and admins by their e-mail
-    /// address, but IIS Windows Authentication only gives us a
-    /// <c>DOMAIN\username</c> identity. This middleware looks the account up in
-    /// Active Directory once per user, caches the result, and republishes the
-    /// principal so that <c>User.Identity.Name</c> is the e-mail address
-    /// everywhere in the app.
+    /// The app identifies requesters, approvers and admins primarily by
+    /// e-mail, but IIS Windows Authentication only gives us a
+    /// <c>DOMAIN\username</c> identity. This middleware resolves the AD e-mail
+    /// (and display name, published as a fallback-matching claim — see
+    /// <see cref="AccessControlService"/>) for the Windows account and
+    /// republishes the principal so that <c>User.Identity.Name</c> is the
+    /// e-mail address everywhere in the app.
     ///
     /// It is a no-op for identities that are already e-mail based (e.g. the
-    /// dev-impersonation principal used when running locally without AD) and for
-    /// anonymous requests.
+    /// dev-impersonation principal used when running locally without AD) and
+    /// for anonymous requests.
     /// </summary>
     public class WindowsIdentityEmailMiddleware
     {
-        // DOMAIN\user -> email. Cached for the lifetime of the process so we only
-        // hit AD once per user rather than on every request.
-        private static readonly ConcurrentDictionary<string, string?> _emailCache =
-            new(StringComparer.OrdinalIgnoreCase);
+        public const string DisplayNameClaimType = "OutsourcePortal:DisplayName";
 
         private readonly RequestDelegate _next;
+        private readonly ActiveDirectoryLookup _ad;
         private readonly ILogger<WindowsIdentityEmailMiddleware> _logger;
 
-        public WindowsIdentityEmailMiddleware(RequestDelegate next,
+        public WindowsIdentityEmailMiddleware(RequestDelegate next, ActiveDirectoryLookup ad,
                                               ILogger<WindowsIdentityEmailMiddleware> logger)
         {
             _next   = next;
+            _ad     = ad;
             _logger = logger;
         }
 
@@ -44,58 +41,36 @@ namespace OutsourceRequestApp.Services
                 // e-mail based (dev impersonation, or an earlier pass) is left alone.
                 if (!name.Contains('@') && name.Contains('\\'))
                 {
-                    var email = _emailCache.GetOrAdd(name, ResolveEmailFromAd);
+                    var email       = _ad.ResolveEmail(name);
+                    var displayName = _ad.ResolveDisplayName(name);
+
                     if (string.IsNullOrEmpty(email))
                     {
                         _logger.LogWarning(
                             "Could not resolve an e-mail address for Windows account {Account}. " +
-                            "This user will not match any approver or admin (both keyed by e-mail).",
+                            "Falling back to display-name matching for approver/admin access where configured.",
                             name);
                     }
-                    else
-                    {
-                        var emailIdentity = new ClaimsIdentity(identity.AuthenticationType);
-                        emailIdentity.AddClaim(new Claim(ClaimTypes.Name, email));
-                        emailIdentity.AddClaim(new Claim(ClaimTypes.Email, email));
 
-                        var principal = new ClaimsPrincipal();
-                        principal.AddIdentity(emailIdentity); // primary — drives User.Identity.Name
-                        principal.AddIdentity(identity);      // keep the original Windows identity
-                        context.User = principal;
-                    }
+                    // Republish the principal. Name becomes the e-mail wherever it
+                    // resolved; otherwise keep the raw Windows name so the account
+                    // is still visible in the UI and DisplayName-based matching
+                    // (AccessControlService) still has a chance to work.
+                    var newIdentity = new ClaimsIdentity(identity.AuthenticationType);
+                    newIdentity.AddClaim(new Claim(ClaimTypes.Name, email ?? name));
+                    if (!string.IsNullOrEmpty(email))
+                        newIdentity.AddClaim(new Claim(ClaimTypes.Email, email));
+                    if (!string.IsNullOrEmpty(displayName))
+                        newIdentity.AddClaim(new Claim(DisplayNameClaimType, displayName));
+
+                    var principal = new ClaimsPrincipal();
+                    principal.AddIdentity(newIdentity); // primary — drives User.Identity.Name
+                    principal.AddIdentity(identity);     // keep the original Windows identity
+                    context.User = principal;
                 }
             }
 
             await _next(context);
-        }
-
-        private string? ResolveEmailFromAd(string domainUser)
-        {
-            if (!OperatingSystem.IsWindows()) return null;
-            return ResolveEmailFromAdWindows(domainUser);
-        }
-
-        [SupportedOSPlatform("windows")]
-        private string? ResolveEmailFromAdWindows(string domainUser)
-        {
-            try
-            {
-                var parts  = domainUser.Split('\\', 2);
-                var domain = parts.Length == 2 ? parts[0] : null;
-                var sam    = parts.Length == 2 ? parts[1] : parts[0];
-
-                using var ctx = domain is null
-                    ? new PrincipalContext(ContextType.Domain)
-                    : new PrincipalContext(ContextType.Domain, domain);
-
-                using var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, sam);
-                return user?.EmailAddress;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Active Directory lookup failed for {Account}.", domainUser);
-                return null;
-            }
         }
     }
 }

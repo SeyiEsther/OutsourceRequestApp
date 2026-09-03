@@ -24,11 +24,15 @@
     bool sourcingPending = Model.Status == RequestStatus.SourcingPending;
     bool mdPending       = Model.Status == RequestStatus.MdPending;
 
-    bool isWpApprover       = wp       != null && wp.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isProdApprover     = prod     != null && prod.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isBuyerApprover    = buyer    != null && buyer.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isSourcingApprover = sourcing != null && sourcing.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
-    bool isMdApprover       = md       != null && md.Email.Equals(currentUser, StringComparison.OrdinalIgnoreCase);
+    // Computed server-side by AccessControlService (email match, with an AD
+    // display-name fallback) rather than a raw e-mail compare here, so the
+    // approve/reject form's visibility always agrees with what the POST
+    // handlers actually authorise.
+    bool isWpApprover       = ViewBag.IsWpApprover;
+    bool isProdApprover     = ViewBag.IsProdApprover;
+    bool isBuyerApprover    = ViewBag.IsBuyerApprover;
+    bool isSourcingApprover = ViewBag.IsSourcingApprover;
+    bool isMdApprover       = ViewBag.IsMdApprover;
 
     string badgeClass = RequestStatus.BadgeClass(Model.Status);
     string badgeLabel = RequestStatus.Label(Model.Status);

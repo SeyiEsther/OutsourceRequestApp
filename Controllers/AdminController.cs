@@ -14,29 +14,19 @@ namespace OutsourceRequestApp.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly AccessControlService _access;
+        private readonly ActiveDirectoryLookup _ad;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(AppDbContext db, IServiceScopeFactory scopeFactory,
+                               AccessControlService access, ActiveDirectoryLookup ad,
                                ILogger<AdminController> logger)
         {
             _db           = db;
             _scopeFactory = scopeFactory;
+            _access       = access;
+            _ad           = ad;
             _logger       = logger;
-        }
-
-        // ----------------------------------------------------------------
-        // Auth helper
-        // ----------------------------------------------------------------
-
-        private async Task<bool> IsAdminAsync()
-        {
-            var setting = await _db.AppSettings
-                .FirstOrDefaultAsync(s => s.SettingKey == "AdminUsers");
-            var admins      = setting?.SettingValue ?? "";
-            var currentUser = User.Identity?.Name ?? "";
-
-            return admins.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                         .Any(a => a.Trim().Equals(currentUser, StringComparison.OrdinalIgnoreCase));
         }
 
         // ----------------------------------------------------------------
@@ -44,7 +34,7 @@ namespace OutsourceRequestApp.Controllers
         // ----------------------------------------------------------------
         public async Task<IActionResult> Index()
         {
-            if (!await IsAdminAsync())
+            if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied. You must be an admin to view this page.");
 
             var roles    = await _db.ApproverRoles.ToListAsync();
@@ -75,7 +65,7 @@ namespace OutsourceRequestApp.Controllers
         public async Task<IActionResult> SaveRole(string roleKey, string roleDisplayName,
                                                    string username, string fullName, string email)
         {
-            if (!await IsAdminAsync())
+            if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied.");
 
             var role = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == roleKey);
@@ -105,7 +95,7 @@ namespace OutsourceRequestApp.Controllers
                                                        string smtpFrom, string smtpFromName,
                                                        string emailDomain, string reminderHours)
         {
-            if (!await IsAdminAsync())
+            if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied.");
 
             async Task Set(string key, string value)
@@ -135,7 +125,7 @@ namespace OutsourceRequestApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveAdmins(string adminUsers)
         {
-            if (!await IsAdminAsync())
+            if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied.");
 
             var s = await _db.AppSettings.FirstOrDefaultAsync(x => x.SettingKey == "AdminUsers");
@@ -155,7 +145,7 @@ namespace OutsourceRequestApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> TestEmail()
         {
-            if (!await IsAdminAsync())
+            if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied.");
 
             var currentUser = User.Identity?.Name ?? "";
@@ -164,11 +154,12 @@ namespace OutsourceRequestApp.Controllers
                 ?? "company.com";
 
             // Under Windows Authentication the signed-in identity is already the
-            // caller's AD e-mail; only fall back to username@domain for legacy
-            // DOMAIN\user or bare-username identities.
+            // caller's AD e-mail in the common case; retry AD resolution and only
+            // fall back to username@domain if that also fails (see EmailService.RequesterEmail).
             var testAddress = currentUser.Contains('@')
                 ? currentUser
-                : $"{(currentUser.Contains('\\') ? currentUser.Split('\\')[1] : currentUser)}@{emailDomain}";
+                : _ad.ResolveEmail(currentUser)
+                  ?? $"{ActiveDirectoryLookup.NormalizeAccountName(currentUser)}@{emailDomain}";
 
             var fakeReq = new OutsourceRequest
             {
