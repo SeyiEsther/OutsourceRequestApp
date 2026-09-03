@@ -69,6 +69,16 @@ namespace OutsourceRequestApp.Controllers
             if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied.");
 
+            // The admin panel's UI only ever posts one of the 5 canonical role
+            // keys (they're hardcoded in the page, not user-editable), but a
+            // direct POST could still supply anything. Reject it — a stray
+            // ApproverRole row with a key the workflow doesn't recognise is
+            // exactly how "Business Systems Intern" ended up shown as
+            // someone's role on the dashboard: a leftover row nothing ever
+            // filtered out. See RequestStatus.ApproverRoleKeys.
+            if (!RequestStatus.IsKnownApproverRoleKey(roleKey))
+                return BadRequest($"Unknown role key '{roleKey}'.");
+
             var role = await _db.ApproverRoles.FirstOrDefaultAsync(r => r.RoleKey == roleKey);
             if (role == null)
             {

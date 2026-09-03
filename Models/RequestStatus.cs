@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace OutsourceRequestApp.Models
 {
     /// <summary>
@@ -91,5 +93,20 @@ namespace OutsourceRequestApp.Models
             "MD"       => "Managing Director",
             _          => ""
         };
+
+        /// <summary>
+        /// The only role keys the current 5-stage workflow recognises. A
+        /// previous version of the app used different roles, and at least
+        /// one leftover ApproverRole row from before that rebuild ("Business
+        /// Systems Intern") was never cleaned up — since nothing filtered by
+        /// this list, whoever that row's e-mail/name matched showed up as an
+        /// "approver" for a role the workflow no longer has any stage for.
+        /// Anything matching an ApproverRole row must check the RoleKey is
+        /// one of these first.
+        /// </summary>
+        public static readonly string[] ApproverRoleKeys = { "WP", "PROD", "BUYER", "SOURCING", "MD" };
+
+        public static bool IsKnownApproverRoleKey(string? roleKey) =>
+            roleKey != null && ApproverRoleKeys.Contains(roleKey);
     }
 }

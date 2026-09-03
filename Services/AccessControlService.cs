@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OutsourceRequestApp.Data;
 using OutsourceRequestApp.Models;
+using System.Linq;
 
 namespace OutsourceRequestApp.Services
 {
@@ -65,10 +66,16 @@ namespace OutsourceRequestApp.Services
                 (!string.IsNullOrEmpty(displayName) && PortalNameMatcher.Matches(a, displayName)));
         }
 
-        /// <summary>Returns the approver role assigned to the current user, or null if they aren't one.</summary>
+        /// <summary>Returns the approver role assigned to the current user, or null if they aren't one.
+        /// Only ever matches one of the workflow's 5 canonical roles (see
+        /// RequestStatus.ApproverRoleKeys) — a stale ApproverRole row left over from before
+        /// the app's current 5-stage rebuild (e.g. an old "Business Systems Intern" role) must
+        /// never make someone look like an approver for a stage the workflow no longer has.</summary>
         public async Task<ApproverRole?> GetMyApproverRoleAsync()
         {
-            var roles       = await _db.ApproverRoles.ToListAsync();
+            var roles       = await _db.ApproverRoles
+                .Where(r => RequestStatus.ApproverRoleKeys.Contains(r.RoleKey))
+                .ToListAsync();
             var current     = CurrentUserName;
             var displayName = CurrentDisplayName;
 
