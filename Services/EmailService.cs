@@ -89,10 +89,22 @@ namespace OutsourceRequestApp.Services
             return $"{username}@{domain}";
         }
 
-        private static string AppUrl()
+        /// <summary>
+        /// Base URL used to build the "click here to review" link in every
+        /// notification e-mail. Configurable from the Admin panel (AppBaseUrl
+        /// setting) rather than hardcoded, because this previously WAS a
+        /// hardcoded server address — and every e-mail link silently breaks
+        /// the moment the app moves host/port, with no error anywhere to
+        /// notice it. Falls back to the last known address only until an
+        /// admin sets it explicitly.
+        /// </summary>
+        private string AppUrl()
         {
-            // Adjust this if your server address changes
-            return "http://csm-srv-16:5200";
+            var configured = _db.AppSettings
+                .FirstOrDefault(s => s.SettingKey == "AppBaseUrl")?.SettingValue;
+            return string.IsNullOrWhiteSpace(configured)
+                ? "http://csm-srv-16:5200"
+                : configured.TrimEnd('/');
         }
 
         // ----------------------------------------------------------------
@@ -118,7 +130,7 @@ An outsource request requires your approval.
   Request:   OSR-{req.RequestId:000000}
   Part:      {req.PartNumber} — {req.SapDescription}
   Quantity:  {req.Quantity}
-  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm} by {req.CreatedByUsername}
+  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm} by {_ad.DisplayNameOrRaw(req.CreatedByUsername)}
   Reason:    {req.Reason}
 
 Please log in to the portal to review this request:
@@ -246,7 +258,7 @@ The following outsource request has been withdrawn by the requester and no furth
 
   Request:   OSR-{req.RequestId:000000}
   Part:      {req.PartNumber} — {req.SapDescription}
-  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm} by {req.CreatedByUsername}
+  Submitted: {req.CreatedAt:dd MMM yyyy HH:mm} by {_ad.DisplayNameOrRaw(req.CreatedByUsername)}
 
 This is an automated message — please do not reply.
 ",
@@ -270,7 +282,7 @@ This is an automated message — please do not reply.
                 var cfg = GetConfig();
                 if (cfg == null || string.IsNullOrEmpty(approver.Email)) return;
 
-                var waiting = DateTime.Now - req.CreatedAt;
+                var waiting = DateTime.Now - req.CurrentStageEnteredAt;
                 var waitStr = waiting.TotalDays >= 1
                     ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
                     : $"{waiting.Hours}h {waiting.Minutes}m";

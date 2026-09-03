@@ -121,7 +121,7 @@
             <div class="queue">
                 @foreach (var r in pending)
                 {
-                    var waiting = DateTime.Now - r.CreatedAt;
+                    var waiting = DateTime.Now - r.CurrentStageEnteredAt;
                     string waitStr = waiting.TotalDays >= 1
                         ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
                         : $"{waiting.Hours}h {waiting.Minutes}m";

@@ -128,6 +128,31 @@
             </form>
         </div></div>
 
+        <!-- App base URL -->
+        <div class="card"><div class="card-body">
+            <div class="rc-stage">Notifications</div>
+            <div class="rc-title">Application Base URL</div>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.65;">
+                Used to build the "click here to review" link in every notification e-mail.
+                Update this whenever the app moves to a new server or port — otherwise every
+                e-mail link silently points at the old address.
+            </p>
+            <form asp-action="SaveSettings" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="smtpHost"      value="@ViewBag.SmtpHost" />
+                <input type="hidden" name="smtpPort"      value="@ViewBag.SmtpPort" />
+                <input type="hidden" name="smtpFrom"      value="@ViewBag.SmtpFrom" />
+                <input type="hidden" name="smtpFromName"  value="@ViewBag.SmtpFromName" />
+                <input type="hidden" name="emailDomain"   value="@ViewBag.EmailDomain" />
+                <input type="hidden" name="reminderHours" value="@ViewBag.ReminderHours" />
+                <div class="fl" style="margin-bottom:14px;">
+                    <label>Base URL</label>
+                    <input name="appBaseUrl" value="@ViewBag.AppBaseUrl" placeholder="http://csm-srv-16:5200" />
+                </div>
+                <button type="submit" class="sbtn primary sm">Save</button>
+            </form>
+        </div></div>
+
     </div>
 
     <!-- Admin Users -->

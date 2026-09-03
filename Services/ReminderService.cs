@@ -67,9 +67,14 @@ namespace OutsourceRequestApp.Services
                     RequestStatus.MdPending
                 };
 
+                // CurrentStageEnteredAt is a computed property (not a DB column), so it
+                // can't be pushed into the SQL WHERE — filter by status there, then by
+                // stage-entry time in memory. The pending set is small (every request
+                // still open anywhere in the chain), so this is cheap.
                 var pending = db.OutsourceRequests
-                    .Where(r => pendingStatuses.Contains(r.Status)
-                             && r.CreatedAt <= cutoff
+                    .Where(r => pendingStatuses.Contains(r.Status))
+                    .AsEnumerable()
+                    .Where(r => r.CurrentStageEnteredAt <= cutoff
                              && (r.LastReminderSentAt == null || r.LastReminderSentAt <= cutoff))
                     .ToList();
 

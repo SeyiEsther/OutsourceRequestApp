@@ -43,7 +43,7 @@
     bool canWithdraw  = Model.Status == RequestStatus.Submitted &&
                         currentUser.Equals(Model.CreatedByUsername, StringComparison.OrdinalIgnoreCase);
 
-    var waiting = DateTime.Now - Model.CreatedAt;
+    var waiting = DateTime.Now - Model.CurrentStageEnteredAt;
     string waitingStr = waiting.TotalDays >= 1
         ? $"{(int)waiting.TotalDays}d {waiting.Hours}h"
         : $"{waiting.Hours}h {waiting.Minutes}m";

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OutsourceRequestApp.Models
 {
@@ -14,6 +15,7 @@ namespace OutsourceRequestApp.Models
         public string? DrawingNumber { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
         public int Quantity { get; set; }
 
         public DateTime? StartDate { get; set; }
@@ -69,5 +71,25 @@ namespace OutsourceRequestApp.Models
         public string? RejectionReason { get; set; }
         public string? RejectedBy { get; set; }
         public DateTime? RejectedAt { get; set; }
+
+        /// <summary>
+        /// When the request entered its CURRENT status — i.e. how long it has
+        /// actually been sitting with whoever needs to act on it right now.
+        /// Deliberately NOT the same as CreatedAt: a request that took days to
+        /// clear Work Prep and Production would otherwise look instantly
+        /// "overdue" for Sourcing the moment it lands there, since CreatedAt
+        /// is the original submission time regardless of how far the request
+        /// has since moved. Used for reminder timing and every "waiting X"
+        /// display instead of CreatedAt.
+        /// </summary>
+        [NotMapped]
+        public DateTime CurrentStageEnteredAt => Status switch
+        {
+            RequestStatus.ProductionPending  => JFSignedDate ?? CreatedAt,
+            RequestStatus.CostCompactPending => LJSignedDate ?? CreatedAt,
+            RequestStatus.SourcingPending    => ScReviewedAt ?? CreatedAt,
+            RequestStatus.MdPending          => SGSignedDate ?? CreatedAt,
+            _                                 => CreatedAt
+        };
     }
 }

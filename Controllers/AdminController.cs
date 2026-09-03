@@ -53,6 +53,7 @@ namespace OutsourceRequestApp.Controllers
             ViewBag.EmailDomain   = Get("CompanyEmailDomain");
             ViewBag.ReminderHours = Get("ReminderHours", "24");
             ViewBag.AdminUsers    = Get("AdminUsers");
+            ViewBag.AppBaseUrl    = Get("AppBaseUrl", "http://csm-srv-16:5200");
 
             return View();
         }
@@ -93,7 +94,8 @@ namespace OutsourceRequestApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveSettings(string smtpHost, string smtpPort,
                                                        string smtpFrom, string smtpFromName,
-                                                       string emailDomain, string reminderHours)
+                                                       string emailDomain, string reminderHours,
+                                                       string appBaseUrl)
         {
             if (!await _access.IsAdminAsync())
                 return StatusCode(403, "Access denied.");
@@ -111,6 +113,7 @@ namespace OutsourceRequestApp.Controllers
             await Set("SmtpFromName",       smtpFromName);
             await Set("CompanyEmailDomain", emailDomain);
             await Set("ReminderHours",      reminderHours);
+            await Set("AppBaseUrl",         appBaseUrl);
 
             await _db.SaveChangesAsync();
 
@@ -173,7 +176,7 @@ namespace OutsourceRequestApp.Controllers
 
             var fakeApprover = new ApproverRole
             {
-                FullName = currentUser,
+                FullName = _access.CurrentDisplayNameOrRaw,
                 Email    = testAddress
             };
 

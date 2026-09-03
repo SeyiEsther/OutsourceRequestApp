@@ -698,9 +698,18 @@ namespace OutsourceRequestApp.Controllers
             return File(bytes, "text/csv", $"outsource-requests-{DateTime.Now:yyyyMMdd-HHmm}.csv");
         }
 
+        // CSV/formula-injection guard: PartNumber, Reason, comments etc. are
+        // free text an admin later opens in Excel. A value starting with
+        // =, +, -, @, tab or CR is interpreted by Excel/Sheets as a formula
+        // (the classic CSV injection vector — e.g. "=cmd|'/c calc'!A0"), so
+        // prefix those with a single quote to force text interpretation,
+        // same convention Excel itself uses.
+        private static readonly char[] FormulaTriggerChars = { '=', '+', '-', '@', '\t', '\r' };
+
         private static string Csv(string? value)
         {
             if (string.IsNullOrEmpty(value)) return "";
+            if (FormulaTriggerChars.Contains(value[0])) value = "'" + value;
             return $"\"{value.Replace("\"", "\"\"")}\"";
         }
 
