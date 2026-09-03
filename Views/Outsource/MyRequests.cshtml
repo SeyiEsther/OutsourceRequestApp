@@ -9,134 +9,36 @@
                                  || r.Status == OutsourceRequestApp.Models.RequestStatus.Cancelled);
 }
 
-<style>
-    .myr { max-width: 960px; margin: 0 auto; padding: 40px 28px 60px; }
+<div class="page">
 
-    .pg-head {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        margin-bottom: 28px; gap: 16px; flex-wrap: wrap;
-    }
-    .pg-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
-    .pg-head p  { font-size: 13px; color: var(--text2); }
-
-    .stat-strip {
-        display: grid; grid-template-columns: repeat(4, 1fr);
-        gap: 10px; margin-bottom: 26px;
-    }
-    .stat-tile {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 10px; padding: 16px 18px;
-    }
-    .st-label {
-        font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
-        color: var(--text3); font-weight: 600; margin-bottom: 8px;
-    }
-    .st-val { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--text); }
-    .st-val.amber { color: #fbbf24; }
-    .st-val.green { color: #4ade80; }
-    .st-val.red   { color: #f87171; }
-
-    .table-wrap {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 12px; overflow: hidden;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    thead { background: #090d14; }
-    th {
-        text-align: left; padding: 11px 16px;
-        font-size: 10px; letter-spacing: .1em;
-        text-transform: uppercase; color: var(--text3);
-        border-bottom: 1px solid var(--border);
-        font-weight: 600; white-space: nowrap;
-    }
-    td {
-        padding: 14px 16px; border-bottom: 1px solid var(--border);
-        font-size: 13px; color: var(--text); vertical-align: middle;
-    }
-    tbody tr { cursor: pointer; transition: background .1s; }
-    tbody tr:hover        { background: var(--card2); }
-    tbody tr:last-child td { border-bottom: none; }
-
-    .cell-id   { font-family: var(--mono); font-size: 11px; color: var(--text3); }
-    .cell-part { font-family: var(--mono); font-size: 12px; font-weight: 500; }
-    .cell-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
-    .cell-muted { font-size: 12px; color: var(--text2); }
-
-    .pill-btn {
-        padding: 5px 14px; border-radius: 999px;
-        font-size: 11px; font-weight: 500;
-        background: transparent; border: 1px solid var(--border2);
-        color: var(--text2); cursor: pointer;
-        transition: all .15s; font-family: var(--font); white-space: nowrap;
-    }
-    .pill-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-    .empty-state { padding: 60px 40px; text-align: center; color: var(--text2); }
-    .empty-ico {
-        width: 48px; height: 48px; background: var(--card2);
-        border-radius: 12px; display: flex; align-items: center;
-        justify-content: center; margin: 0 auto 16px;
-    }
-    .empty-ico svg { width: 22px; height: 22px; stroke: var(--text3); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-    .empty-state p { margin-bottom: 20px; font-size: 14px; }
-
-    @@media (max-width: 768px) {
-        .stat-strip { grid-template-columns: 1fr 1fr; }
-        .table-wrap { overflow-x: auto; }
-        table { min-width: 500px; }
-    }
-</style>
-
-<div class="myr">
-
-    <div class="pg-head">
+    <div class="page-head">
         <div>
-            <h2>My Requests</h2>
-            <p>Outsource requests submitted by you</p>
+            <div class="page-title">My Requests</div>
+            <div class="page-sub">Outsource requests submitted by you</div>
         </div>
-        <a class="btn-primary" asp-controller="Outsource" asp-action="Create">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            New Request
-        </a>
+        <a class="sbtn primary" asp-controller="Outsource" asp-action="Create">+ New Request</a>
     </div>
 
-    <div class="stat-strip">
-        <div class="stat-tile">
-            <div class="st-label">Total</div>
-            <div class="st-val">@total</div>
-        </div>
-        <div class="stat-tile">
-            <div class="st-label">In Progress</div>
-            <div class="st-val amber">@pending</div>
-        </div>
-        <div class="stat-tile">
-            <div class="st-label">Approved</div>
-            <div class="st-val green">@approved</div>
-        </div>
-        <div class="stat-tile">
-            <div class="st-label">Rejected</div>
-            <div class="st-val red">@rejected</div>
-        </div>
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">@total</div></div>
+        <div class="kpi"><div class="kpi-label">In Progress</div><div class="kpi-val amber">@pending</div></div>
+        <div class="kpi"><div class="kpi-label">Approved</div><div class="kpi-val green">@approved</div></div>
+        <div class="kpi"><div class="kpi-label">Rejected</div><div class="kpi-val red">@rejected</div></div>
     </div>
 
     @if (!Model.Any())
     {
-        <div class="table-wrap">
-            <div class="empty-state">
-                <div class="empty-ico">
-                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </div>
-                <p>You haven't submitted any outsource requests yet.</p>
-                <a class="btn-primary" asp-controller="Outsource" asp-action="Create">Create First Request</a>
+        <div class="card">
+            <div class="empty">
+                <p style="margin-bottom:16px;">You haven't submitted any outsource requests yet.</p>
+                <a class="sbtn primary" asp-controller="Outsource" asp-action="Create">Create First Request</a>
             </div>
         </div>
     }
     else
     {
-        <div class="table-wrap">
-            <table>
+        <div class="grid-wrap">
+            <table class="dash-table">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -152,24 +54,24 @@
                     @foreach (var r in Model)
                     {
                         <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-                            <td><span class="cell-id">#@r.RequestId.ToString("000000")</span></td>
+                            <td>#@r.RequestId.ToString("000000")</td>
                             <td>
-                                <div class="cell-part">@r.PartNumber</div>
+                                <div style="font-weight:600;">@r.PartNumber</div>
                                 @if (!string.IsNullOrEmpty(r.SapDescription))
                                 {
-                                    <div class="cell-desc">@r.SapDescription</div>
+                                    <div style="font-size:11px;color:var(--muted);margin-top:2px;">@r.SapDescription</div>
                                 }
                             </td>
                             <td>@r.Quantity</td>
-                            <td class="cell-muted">@(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yy") : "—")</td>
+                            <td style="color:var(--muted)">@(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yy") : "—")</td>
                             <td>
-                                <span class="badge @RequestStatus.BadgeClass(r.Status)">
+                                <span class="rag @RequestStatus.RagClass(r.Status)">
                                     @RequestStatus.Label(r.Status)
                                 </span>
                             </td>
-                            <td class="cell-muted">@r.CreatedAt.ToString("dd MMM yy")</td>
+                            <td style="color:var(--muted)">@r.CreatedAt.ToString("dd MMM yy")</td>
                             <td>
-                                <button class="pill-btn"
+                                <button class="sbtn sm"
                                         onclick="event.stopPropagation();location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
                                     Track →
                                 </button>

@@ -12,119 +12,55 @@
 }
 
 <style>
-    .admin-pg { max-width: 960px; margin: 0 auto; padding: 40px 24px 60px; }
-
-    .pg-head { margin-bottom: 32px; }
-    .pg-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
-    .pg-head p  { font-size: 13px; color: var(--text2); }
-
     .success-banner {
         display: flex; align-items: center; gap: 10px;
-        background: rgba(34,197,94,.08);
-        border: 1px solid rgba(34,197,94,.22);
+        background: var(--green-bg); border: 1px solid #86efac;
         border-radius: 9px; padding: 12px 16px;
-        font-size: 13px; color: #4ade80; margin-bottom: 22px;
+        font-size: 13px; color: var(--green); font-weight: 600; margin-bottom: 22px;
     }
-
-    .admin-label {
-        font-size: 10px; text-transform: uppercase;
-        letter-spacing: .1em; color: var(--text3); font-weight: 600;
-        margin-bottom: 14px; margin-top: 32px;
-        display: flex; align-items: center; gap: 10px;
-    }
-    .admin-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
     /* Role grid */
-    .role-grid {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 14px;
-    }
-    .role-card {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 12px; padding: 20px 22px;
-    }
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .rc-stage {
         font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
-        color: var(--accent); font-weight: 600; margin-bottom: 4px;
+        color: var(--accent); font-weight: 700; margin-bottom: 4px;
     }
-    .rc-title { font-size: 14px; font-weight: 600; margin-bottom: 18px; }
-
-    .field {
-        display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px;
-    }
-    .field label {
-        font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-        color: var(--text2); font-weight: 600;
-    }
-    .field input, .field select {
-        background: var(--bg); color: var(--text);
-        border: 1px solid var(--border2); border-radius: 8px;
-        padding: 8px 11px; font-family: var(--font); font-size: 13px; width: 100%;
-    }
-    .field input:focus, .field select:focus {
-        border-color: var(--accent); outline: none;
-        box-shadow: 0 0 0 3px var(--accent-dim);
-    }
-
-    .btn-save {
-        padding: 8px 18px; background: var(--accent); border: none;
-        border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700;
-        cursor: pointer; font-family: var(--font); transition: background .15s;
-    }
-    .btn-save:hover { background: var(--accent-d); }
-
-    /* SMTP */
-    .smtp-card {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 12px; padding: 22px;
-    }
-    .smtp-hint {
-        font-size: 12px; color: var(--text2);
-        margin-bottom: 18px; line-height: 1.65;
-        background: var(--card2); border-radius: 8px;
-        padding: 12px 14px; border: 1px solid var(--border);
-    }
-    .smtp-hint code { font-family: var(--mono); font-size: 11px; color: var(--text); }
-    .smtp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-actions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .rc-title { font-size: 14px; font-weight: 700; margin-bottom: 18px; }
 
     /* Admin users */
-    .wl-card {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 12px; padding: 22px;
-    }
-    .wl-hint { font-size: 13px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+    .wl-hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
     .wl-item {
         display: flex; justify-content: space-between; align-items: center;
         padding: 10px 0; border-bottom: 1px solid var(--border);
     }
     .wl-item:last-child { border-bottom: none; }
-    .wl-name { font-family: var(--mono); font-size: 12px; }
+    .wl-name { font-size: 12px; font-weight: 500; }
     .wl-remove {
-        font-size: 12px; color: #f87171;
-        cursor: pointer; background: none; border: none; font-family: var(--font);
-        padding: 4px 8px; border-radius: 6px; transition: background .15s;
+        font-size: 12px; color: var(--red-text);
+        cursor: pointer; background: none; border: none; font-family: inherit;
+        padding: 4px 8px; border-radius: 6px; transition: background var(--dur-fast);
     }
-    .wl-remove:hover { background: rgba(239,68,68,.1); }
+    .wl-remove:hover { background: var(--red-bg); }
     .wl-add { display: flex; gap: 8px; margin-top: 14px; }
     .wl-add input {
-        flex: 1; background: var(--bg); color: var(--text);
-        border: 1px solid var(--border2); border-radius: 8px;
-        padding: 8px 11px; font-family: var(--font); font-size: 13px;
+        flex: 1; background: var(--white); color: var(--ink);
+        border: 1px solid var(--border); border-radius: 10px;
+        padding: 9px 12px; font-family: inherit; font-size: 13px;
     }
-    .wl-add input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-dim); }
+    .wl-add input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(43,90,237,.12); }
 
     @@media (max-width: 768px) {
-        .role-grid  { grid-template-columns: 1fr !important; }
-        .smtp-grid  { grid-template-columns: 1fr !important; }
+        .role-grid { grid-template-columns: 1fr !important; }
     }
 </style>
 
-<div class="admin-pg">
+<div class="page">
 
-    <div class="pg-head">
-        <h2>Admin Panel</h2>
-        <p>Configure approvers, email settings, and admin access</p>
+    <div class="page-head">
+        <div>
+            <div class="page-title">Admin Panel</div>
+            <div class="page-sub">Configure approvers, email settings, and admin access</div>
+        </div>
     </div>
 
     @if (TempData["Success"] != null)
@@ -138,7 +74,7 @@
     }
 
     <!-- Approver Roles -->
-    <div class="admin-label">Approval role assignments</div>
+    <div class="section-label">Approval role assignments</div>
     <div class="role-grid">
 
         @foreach (var (roleKey, displayName, stageNum, roleVar) in new[] {
@@ -149,32 +85,32 @@
             ("MD",       "Managing Director",                 5, md)
         })
         {
-            <div class="role-card">
+            <div class="card"><div class="card-body">
                 <div class="rc-stage">Stage @stageNum</div>
                 <div class="rc-title">@displayName</div>
                 <form asp-action="SaveRole" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="roleKey"         value="@roleKey" />
                     <input type="hidden" name="roleDisplayName" value="@displayName" />
-                    <div class="field">
+                    <div class="fl" style="margin-bottom:12px;">
                         <label>Full name</label>
                         <input name="fullName" value="@(roleVar?.FullName ?? "")" placeholder="e.g. Sarah Jones" />
                     </div>
-                    <div class="field">
+                    <div class="fl" style="margin-bottom:14px;">
                         <label>Email address (used to grant access)</label>
                         <input name="email" type="email" value="@(roleVar?.Email ?? "")" placeholder="s.jones@company.com" />
                     </div>
                     <input type="hidden" name="username" value="@(roleVar?.Username ?? "")" />
-                    <button type="submit" class="btn-save">Save</button>
+                    <button type="submit" class="sbtn primary sm">Save</button>
                 </form>
-            </div>
+            </div></div>
         }
 
         <!-- Reminder interval -->
-        <div class="role-card">
+        <div class="card"><div class="card-body">
             <div class="rc-stage">Reminders</div>
             <div class="rc-title">Email Reminder Interval</div>
-            <p style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.65;">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.65;">
                 Send a chase email to the current approver if they haven't acted after this many hours.
             </p>
             <form asp-action="SaveSettings" method="post">
@@ -184,19 +120,19 @@
                 <input type="hidden" name="smtpFrom"     value="@ViewBag.SmtpFrom" />
                 <input type="hidden" name="smtpFromName" value="@ViewBag.SmtpFromName" />
                 <input type="hidden" name="emailDomain"  value="@ViewBag.EmailDomain" />
-                <div class="field">
+                <div class="fl" style="margin-bottom:14px;">
                     <label>Hours before reminder</label>
                     <input name="reminderHours" type="number" min="1" value="@(ViewBag.ReminderHours ?? "24")" />
                 </div>
-                <button type="submit" class="btn-save">Save</button>
+                <button type="submit" class="sbtn primary sm">Save</button>
             </form>
-        </div>
+        </div></div>
 
     </div>
 
     <!-- Admin Users -->
-    <div class="admin-label">Admin users</div>
-    <div class="wl-card">
+    <div class="section-label">Admin users</div>
+    <div class="card"><div class="card-body">
         <p class="wl-hint">These email addresses have access to this Admin panel.</p>
 
         @{
@@ -225,10 +161,10 @@
             <div class="wl-add">
                 <input id="newAdminInput" placeholder="s.jones@company.com" />
                 <input type="hidden" id="adminUsersHidden" name="adminUsers" value="@ViewBag.AdminUsers" />
-                <button type="submit" class="btn-save" onclick="appendAdmin()">Add</button>
+                <button type="submit" class="sbtn primary sm" onclick="appendAdmin()">Add</button>
             </div>
         </form>
-    </div>
+    </div></div>
 
 </div>
 

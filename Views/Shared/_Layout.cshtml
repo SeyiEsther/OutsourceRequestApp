@@ -4,379 +4,48 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Outsource Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        :root {
-            /* Core palette — deep charcoal canvas, off-black surfaces */
-            --bg:        #030303;
-            --panel:     #09090b;
-            --card:      #0c0c0e;
-            --card2:     #111113;
-            --hover:     rgba(255,255,255,0.035);
-            --border:    rgba(255,255,255,0.06);
-            --border2:   rgba(255,255,255,0.11);
-            --accent:    #6366f1;
-            --accent-d:  #4f46e5;
-            --accent-dim:rgba(99,102,241,0.12);
-            --text:      #e4e4e7;
-            --text2:     #8b8b93;
-            --text3:     #4b4b54;
-            --green:     #22c55e;
-            --amber:     #f59e0b;
-            --red-err:   #ef4444;
-            --font:      'Inter', sans-serif;
-            --mono:      'JetBrains Mono', monospace;
-            --sidebar-w: 228px;
-            --r:         10px;
-
-            /* Legacy aliases so page-specific CSS keeps working */
-            --red:       var(--accent);
-            --red-dark:  var(--accent-d);
-            --surface:   var(--card);
-            --surface2:  var(--card2);
-            --muted:     var(--text2);
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: var(--font);
-            font-size: 13px;
-            line-height: 1.5;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ───────────────── App shell ───────────────── */
-        .app-shell {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* ───────────────── Sidebar ─────────────────── */
-        .sidebar {
-            width: var(--sidebar-w);
-            background: var(--panel);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            top: 0; left: 0; bottom: 0;
-            z-index: 100;
-            transition: transform 0.24s cubic-bezier(.4,0,.2,1);
-        }
-
-        .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            padding: 18px 16px 16px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .brand-mark {
-            width: 30px; height: 30px;
-            background: var(--accent);
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .brand-mark svg {
-            width: 16px; height: 16px;
-            stroke: #fff; fill: none;
-            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-        }
-
-        .brand-text  { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
-        .brand-sub   { font-size: 10px; color: var(--text3); font-weight: 400; margin-top: 1px; }
-
-        .sidebar-nav {
-            flex: 1;
-            padding: 12px 8px;
-            overflow-y: auto;
-        }
-
-        .sidebar-footer {
-            padding: 12px 14px;
-            border-top: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .user-chip {
-            display: flex; align-items: center; gap: 9px;
-        }
-
-        .user-avatar {
-            width: 28px; height: 28px;
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 1px solid rgba(99,102,241,0.28);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 700;
-            color: var(--accent); flex-shrink: 0;
-        }
-
-        .user-name {
-            font-size: 11px; color: var(--text3);
-            font-family: var(--mono);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        /* ───────────────── Main area ───────────────── */
-        .main-area {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            display: flex; flex-direction: column;
-            min-height: 100vh;
-        }
-
-        /* Mobile bar */
-        .mobile-bar {
-            display: none;
-            align-items: center; justify-content: space-between;
-            padding: 0 16px; height: 52px;
-            background: var(--panel);
-            border-bottom: 1px solid var(--border);
-            position: sticky; top: 0; z-index: 90;
-        }
-
-        .mobile-brand { font-size: 13px; font-weight: 700; }
-
-        .hamburger {
-            background: none; border: none;
-            color: var(--text2); cursor: pointer; padding: 6px;
-            line-height: 0;
-        }
-
-        .sidebar-overlay {
-            display: none;
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(2px);
-            z-index: 99;
-        }
-
-        main { flex: 1; }
-
-        .site-footer {
-            padding: 16px 28px;
-            border-top: 1px solid var(--border);
-            font-size: 11px; color: var(--text3); text-align: center;
-        }
-
-        /* ───────────────── Shared UI ───────────────── */
-
-        /* Buttons */
-        .btn-primary {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 9px 18px;
-            background: var(--accent); border: none;
-            border-radius: var(--r); color: #fff;
-            font-size: 13px; font-weight: 600;
-            cursor: pointer; text-decoration: none;
-            transition: background 0.15s, transform 0.1s;
-            font-family: var(--font); white-space: nowrap;
-        }
-        .btn-primary:hover  { background: var(--accent-d); color: #fff; }
-        .btn-primary:active { transform: scale(0.98); }
-
-        .btn-ghost {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 8px 16px;
-            background: transparent; border: 1px solid var(--border2);
-            border-radius: var(--r); color: var(--text2);
-            font-size: 13px; cursor: pointer; text-decoration: none;
-            transition: all 0.15s; font-family: var(--font); white-space: nowrap;
-        }
-        .btn-ghost:hover { color: var(--text); background: rgba(255,255,255,0.05); border-color: var(--border2); }
-
-        /* Badges */
-        .badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 3px 10px; border-radius: 999px;
-            font-size: 11px; font-weight: 500; white-space: nowrap;
-        }
-        .badge::before {
-            content: ''; width: 5px; height: 5px;
-            border-radius: 50%; background: currentColor; opacity: 0.85;
-        }
-        .badge-submitted { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
-        .badge-approved  { background: rgba(34,197,94,0.1);  color: #4ade80; border: 1px solid rgba(34,197,94,0.22); }
-        .badge-review    { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.22); }
-        .badge-rejected  { background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.22); }
-
-        /* Section label */
-        .section-label {
-            font-size: 11px; font-weight: 500;
-            letter-spacing: 0.08em; text-transform: uppercase;
-            color: var(--text2); margin-bottom: 12px; margin-top: 28px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-        /* Form card */
-        .form-card {
-            background: var(--card); border: 1px solid var(--border);
-            border-radius: 12px; padding: 22px; margin-bottom: 4px;
-        }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .field { display: flex; flex-direction: column; gap: 6px; }
-        .field.span-2 { grid-column: 1 / -1; }
-        .field label {
-            font-size: 10px; font-weight: 600;
-            letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2);
-        }
-        .field input, .field textarea, .field select {
-            background: var(--bg); color: var(--text);
-            border: 1px solid var(--border2); border-radius: 8px;
-            padding: 9px 12px; font-family: var(--font); font-size: 13px;
-            transition: border 0.15s, box-shadow 0.15s; width: 100%;
-        }
-        .field input:focus, .field textarea:focus, .field select:focus {
-            border-color: var(--accent); outline: none;
-            box-shadow: 0 0 0 3px var(--accent-dim);
-        }
-        .field input:disabled { color: var(--text2); cursor: not-allowed; }
-        .field textarea { min-height: 110px; resize: vertical; }
-
-        /* Back link */
-        .back-link {
-            display: inline-flex; align-items: center; gap: 6px;
-            font-size: 12px; color: var(--text2); text-decoration: none;
-            margin-bottom: 24px; transition: color .15s;
-        }
-        .back-link:hover { color: var(--text); }
-
-        /* Modal overlay */
-        .site-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
-            z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.18s;
-        }
-        .site-overlay.visible { opacity: 1; pointer-events: all; }
-        .site-modal-box {
-            background: var(--card); border: 1px solid var(--border2);
-            border-radius: 16px; padding: 28px;
-            max-width: 420px; width: calc(100% - 40px);
-            transform: scale(0.95); transition: transform 0.18s;
-        }
-        .site-overlay.visible .site-modal-box { transform: scale(1); }
-        .site-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
-        .site-modal-msg   { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 24px; }
-        .site-modal-btns  { display: flex; gap: 10px; justify-content: flex-end; }
-
-        /* Page progress bar */
-        #page-progress {
-            position: fixed; top: 0; left: 0;
-            height: 2px; background: var(--accent);
-            z-index: 999; width: 0;
-            transition: width 0.25s ease; pointer-events: none;
-        }
-
-        /* ───────────────── Responsive ──────────────── */
-        @@media (max-width: 768px) {
-            .main-area  { margin-left: 0; }
-            .sidebar    { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.open { display: block; }
-            .mobile-bar { display: flex; }
-            .form-grid  { grid-template-columns: 1fr !important; }
-            .field.span-2 { grid-column: 1 !important; }
-        }
-
-        /* ───────────────── Print ───────────────────── */
-        @@media print {
-            .sidebar, .mobile-bar, .site-overlay, #page-progress,
-            .btn-primary, .btn-ghost, .back-link,
-            .action-btns, .approve-form, .btn-withdraw,
-            .email-note, .toolbar, .pagination,
-            .header-actions, .track-btn,
-            button { display: none !important; }
-            body { background: #fff !important; color: #000 !important; font-size: 11pt; }
-            .main-area { margin-left: 0; }
-            .badge { border: 1px solid #999 !important; color: #000 !important; background: transparent !important; }
-            .badge::before { display: none !important; }
-            .form-card, .table-card, .stage, .stat-card {
-                border: 1px solid #ccc !important; background: transparent !important;
-            }
-            * { color: #000 !important; -webkit-print-color-adjust: exact; }
-        }
-    </style>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
 
-<div class="app-shell">
-
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <div class="brand-mark">
-                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            </div>
-            <div>
-                <div class="brand-text">Outsource</div>
-                <div class="brand-sub">Request Portal</div>
-            </div>
+<div class="topbar">
+    <div class="stripes">
+        <div class="st" style="background:#CC1F2C;width:22px"></div>
+        <div class="st" style="background:#9B1E8E;width:17px"></div>
+        <div class="st" style="background:#0066B2;width:12px"></div>
+        <div class="st" style="background:#00A651;width:9px"></div>
+    </div>
+    <div>
+        <div class="brand">RITTAL</div>
+        <div class="subbrand">Outsource Request Portal</div>
+    </div>
+    <div class="topbar-right">
+        @await Component.InvokeAsync("NavContext")
+        <div class="user-chip">
+            @{
+                var _un = User.Identity?.Name ?? "";
+                var _short = _un.Contains('\\') ? _un.Split('\\').Last() : _un;
+            }
+            @(_short.Length > 0 ? _short : "—")
         </div>
-
-        <nav class="sidebar-nav">
-            @await Component.InvokeAsync("NavContext")
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="user-chip">
-                <div class="user-avatar">
-                    @{
-                        var _un = User.Identity?.Name ?? "";
-                        var _short = _un.Contains('\\') ? _un.Split('\\').Last() : _un;
-                        var _init = _short.Length > 0 ? _short[0].ToString().ToUpper() : "?";
-                    }
-                    @_init
-                </div>
-                <div class="user-name">@(User.Identity?.Name ?? "—")</div>
-            </div>
-        </div>
-    </aside>
-
-    <div class="main-area">
-
-        <div class="mobile-bar">
-            <span class="mobile-brand">Outsource Portal</span>
-            <button class="hamburger" id="hamburger" aria-label="Menu">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <line x1="3" y1="6" x2="21" y2="6"/>
-                    <line x1="3" y1="12" x2="21" y2="12"/>
-                    <line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-            </button>
-        </div>
-
-        <main>
-            @RenderBody()
-        </main>
-
-        <footer class="site-footer">
-            &copy; @DateTime.Now.Year Outsource Request Portal — Internal Use Only
-        </footer>
     </div>
 </div>
+
+<main class="app-main">
+@RenderBody()
+</main>
+
+<footer class="site-footer">
+    &copy; @DateTime.Now.Year Outsource Request Portal — Internal Use Only
+</footer>
 
 <div class="site-overlay" id="site-overlay">
     <div class="site-modal-box">
         <div class="site-modal-title" id="site-modal-title"></div>
         <div class="site-modal-msg"   id="site-modal-msg"></div>
         <div class="site-modal-btns">
-            <button class="btn-ghost"    id="site-modal-cancel">Cancel</button>
-            <button class="btn-primary"  id="site-modal-ok">OK</button>
+            <button class="sbtn"         id="site-modal-cancel">Cancel</button>
+            <button class="sbtn primary" id="site-modal-ok">OK</button>
         </div>
     </div>
 </div>
@@ -385,18 +54,6 @@
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script>
-    // Mobile sidebar
-    const _sidebar  = document.getElementById('sidebar');
-    const _overlay  = document.getElementById('sidebarOverlay');
-    document.getElementById('hamburger')?.addEventListener('click', () => {
-        _sidebar.classList.toggle('open');
-        _overlay.classList.toggle('open');
-    });
-    _overlay.addEventListener('click', () => {
-        _sidebar.classList.remove('open');
-        _overlay.classList.remove('open');
-    });
-
     // Themed modal — replaces browser alert() / confirm()
     const SiteModal = {
         _resolve: null,

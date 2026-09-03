@@ -30,13 +30,13 @@ namespace OutsourceRequestApp.Models
             _                  => status ?? ""
         };
 
-        /// <summary>CSS badge class for the shared badge component.</summary>
-        public static string BadgeClass(string? status) => status switch
+        /// <summary>RAG badge class (g/a/r/u) for the shared .rag badge component.</summary>
+        public static string RagClass(string? status) => status switch
         {
-            Approved                                                               => "badge-approved",
-            Rejected or Cancelled                                                  => "badge-rejected",
-            ProductionPending or CostCompactPending or SourcingPending or MdPending => "badge-review",
-            _                                                                       => "badge-submitted"
+            Approved                                                               => "g",
+            Rejected or Cancelled                                                  => "r",
+            ProductionPending or CostCompactPending or SourcingPending or MdPending => "a",
+            _                                                                       => "u"
         };
 
         /// <summary>JS/data-status filter key used in the Index table.</summary>

@@ -16,40 +16,33 @@
     bool sourcingDone = Model.SGSignedDate.HasValue;
     bool mdDone       = Model.MdReviewedAt.HasValue;
 
-    string badgeClass = RequestStatus.BadgeClass(Model.Status);
+    string ragClass = RequestStatus.RagClass(Model.Status);
     string statusLabel = RequestStatus.Label(Model.Status);
 }
 
 <style>
-    .detail-pg { max-width: 860px; margin: 0 auto; padding: 40px 28px 60px; }
-
     .detail-head {
         display: flex; justify-content: space-between; align-items: flex-start;
-        margin-bottom: 32px; gap: 16px; flex-wrap: wrap;
+        margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
     }
-    .d-id    { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 5px; }
-    .d-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 5px; }
-    .d-meta  { font-size: 12px; color: var(--text2); }
+    .d-id    { font-size: 11px; color: var(--muted); margin-bottom: 5px; font-weight: 600; letter-spacing: .04em; }
+    .d-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 5px; }
+    .d-meta  { font-size: 12px; color: var(--muted); }
     .detail-actions { display: flex; gap: 10px; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
 
     /* Info grid */
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
     .info-label {
         font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
-        color: var(--text2); font-weight: 600;
+        color: var(--muted); font-weight: 600;
         padding: 10px 20px 10px 0; border-bottom: 1px solid var(--border);
     }
-    .info-val {
-        font-size: 13px; color: var(--text);
-        padding: 10px 0; border-bottom: 1px solid var(--border);
-    }
-    .info-val.mono { font-family: var(--mono); font-size: 12px; }
+    .info-val { font-size: 13px; color: var(--ink); padding: 10px 0; border-bottom: 1px solid var(--border); }
 
     .reason-box {
-        background: var(--card2); border-radius: 8px;
+        background: var(--surface); border-radius: 8px;
         padding: 14px 16px; font-size: 13px;
-        line-height: 1.7; color: var(--text);
-        margin-top: 14px;
+        line-height: 1.7; color: var(--ink); margin-top: 14px;
     }
 
     /* Cost rows */
@@ -58,56 +51,39 @@
         padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px;
     }
     .cost-row:last-child { border-bottom: none; }
-    .cost-label { color: var(--text2); font-size: 12px; }
-    .cost-val   { font-family: var(--mono); }
+    .cost-label { color: var(--muted); font-size: 12px; }
 
     /* Approval stages */
-    .approval-stage {
-        display: flex; gap: 14px;
-        padding: 14px 0; border-bottom: 1px solid var(--border);
-    }
+    .approval-stage { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
     .approval-stage:last-child { border-bottom: none; }
 
     .as-ico {
         width: 34px; height: 34px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 600; flex-shrink: 0; margin-top: 1px;
+        font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
     }
-    .asi-done { background: rgba(34,197,94,.1);  color: var(--green); }
-    .asi-pend { background: var(--accent-dim);   color: var(--accent); }
-    .asi-wait { background: var(--card2);         color: var(--text3); }
-    .asi-rej  { background: rgba(239,68,68,.1);  color: #f87171; }
+    .asi-done { background: var(--green-bg); color: var(--green); }
+    .asi-pend { background: var(--accent-soft); color: var(--accent); }
+    .asi-wait { background: var(--surface); color: var(--muted); }
+    .asi-rej  { background: var(--red-bg); color: var(--red-text); }
 
     .as-body { flex: 1; }
-    .as-role { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-    .as-who  { font-size: 12px; color: var(--text2); }
-    .as-when { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 3px; }
-    .as-note { font-size: 12px; color: var(--text2); font-style: italic; margin-top: 4px; }
-
-    /* Stage chip */
-    .stage-chip {
-        display: inline-flex; align-items: center; gap: 5px;
-        font-size: 11px; padding: 3px 11px; border-radius: 999px; white-space: nowrap;
-    }
-    .chip-done    { background: rgba(34,197,94,.1); color: var(--green); border: 1px solid rgba(34,197,94,.22); }
-    .chip-pending { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(99,102,241,.25); }
-    .chip-waiting { background: var(--card2); color: var(--text2); border: 1px solid var(--border2); }
-    .chip-rej     { background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.22); }
+    .as-role { font-size: 13px; font-weight: 700; margin-bottom: 2px; color: var(--ink); }
+    .as-who  { font-size: 12px; color: var(--muted); }
+    .as-when { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .as-note { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 4px; }
 
     .attachment-link {
         display: inline-flex; align-items: center; gap: 6px;
-        font-size: 13px; color: var(--accent); text-decoration: none; margin-top: 8px;
+        font-size: 13px; color: var(--accent); text-decoration: none; margin-top: 8px; font-weight: 600;
     }
     .attachment-link:hover { text-decoration: underline; }
+    .attachment-thumb { max-width: 260px; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px; }
 
-    .attachment-thumb {
-        max-width: 260px; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;
-    }
-
-    .footer-actions { margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .footer-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
 </style>
 
-<div class="detail-pg">
+<div class="wrap">
 
     <a class="back-link" asp-controller="Outsource" asp-action="Index">← All requests</a>
 
@@ -118,27 +94,25 @@
             <div class="d-meta">Submitted @Model.CreatedAt.ToString("dd MMM yyyy, HH:mm") by @Model.CreatedByUsername</div>
         </div>
         <div class="detail-actions">
-            <span class="badge @badgeClass">@statusLabel</span>
-            <a class="btn-primary" asp-controller="Outsource" asp-action="Track" asp-route-id="@Model.RequestId">
-                Track →
-            </a>
+            <span class="rag @ragClass">@statusLabel</span>
+            <a class="sbtn primary" asp-controller="Outsource" asp-action="Track" asp-route-id="@Model.RequestId">Track →</a>
         </div>
     </div>
 
     <div class="section-label">Request details</div>
-    <div class="form-card">
+    <div class="card"><div class="card-body">
         <div class="info-grid">
             <div class="info-label">Part number</div>
-            <div class="info-val mono">@Model.PartNumber</div>
+            <div class="info-val">@Model.PartNumber</div>
 
             <div class="info-label">SAP description</div>
             <div class="info-val">@(Model.SapDescription ?? "—")</div>
 
             <div class="info-label">Drawing number</div>
-            <div class="info-val mono">@(Model.DrawingNumber ?? "—")</div>
+            <div class="info-val">@(Model.DrawingNumber ?? "—")</div>
 
             <div class="info-label">Quantity</div>
-            <div class="info-val mono">@Model.Quantity</div>
+            <div class="info-val">@Model.Quantity</div>
 
             <div class="info-label">Start date</div>
             <div class="info-val">@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("dd MMM yyyy") : "—")</div>
@@ -151,12 +125,12 @@
             <div class="info-label" style="padding:0;border:none;margin-bottom:8px;">Reason for outsourcing</div>
             <div class="reason-box">@Model.Reason</div>
         </div>
-    </div>
+    </div></div>
 
     @if (!string.IsNullOrEmpty(Model.AttachmentPath))
     {
         <div class="section-label">Attachment</div>
-        <div class="form-card">
+        <div class="card"><div class="card-body">
             @{
                 var isPdf = Model.AttachmentPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
             }
@@ -173,24 +147,24 @@
                 <br />
                 <a class="attachment-link" href="/@Model.AttachmentPath" target="_blank">Open full size →</a>
             }
-        </div>
+        </div></div>
     }
 
     @if (Model.CostInhousePerMonth.HasValue || Model.CostOutsourcePerMonth.HasValue || Model.PpapRequired.HasValue)
     {
         <div class="section-label">Supply Chain — cost analysis</div>
-        <div class="form-card">
+        <div class="card"><div class="card-body">
             <div class="cost-row">
                 <span class="cost-label">PPAP required?</span>
-                <span class="cost-val">@(Model.PpapRequired.HasValue ? (Model.PpapRequired.Value ? "Yes" : "No") : "—")</span>
+                <span>@(Model.PpapRequired.HasValue ? (Model.PpapRequired.Value ? "Yes" : "No") : "—")</span>
             </div>
             <div class="cost-row">
                 <span class="cost-label">In-house cost / month</span>
-                <span class="cost-val">@(Model.CostInhousePerMonth.HasValue ? $"£{Model.CostInhousePerMonth.Value:N2}" : "—")</span>
+                <span>@(Model.CostInhousePerMonth.HasValue ? $"£{Model.CostInhousePerMonth.Value:N2}" : "—")</span>
             </div>
             <div class="cost-row">
                 <span class="cost-label">Outsource cost / month</span>
-                <span class="cost-val">@(Model.CostOutsourcePerMonth.HasValue ? $"£{Model.CostOutsourcePerMonth.Value:N2}" : "—")</span>
+                <span>@(Model.CostOutsourcePerMonth.HasValue ? $"£{Model.CostOutsourcePerMonth.Value:N2}" : "—")</span>
             </div>
             @if (!string.IsNullOrEmpty(Model.CostComments))
             {
@@ -199,11 +173,11 @@
                     <span style="font-size:13px;">@Model.CostComments</span>
                 </div>
             }
-        </div>
+        </div></div>
     }
 
     <div class="section-label">Approval history</div>
-    <div class="form-card">
+    <div class="card"><div class="card-body">
 
         <div class="approval-stage">
             <div class="as-ico asi-done">✓</div>
@@ -212,7 +186,7 @@
                 <div class="as-who">@Model.CreatedByUsername</div>
                 <div class="as-when">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
             </div>
-            <span class="stage-chip chip-done">Submitted</span>
+            <span class="rag g">Submitted</span>
         </div>
 
         @{
@@ -228,7 +202,7 @@
                     Work Preparation
                     @if (wp != null && (wpDone || wpPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @wp.FullName</span>
+                        <span style="font-weight:400;color:var(--muted)"> — @wp.FullName</span>
                     }
                 </div>
                 <div class="as-who">
@@ -241,7 +215,7 @@
                     <div class="as-when">@Model.JFSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
                 }
             </div>
-            <span class="stage-chip @(wpDone ? "chip-done" : wpPend ? "chip-pending" : wpRej ? "chip-rej" : "chip-waiting")">
+            <span class="rag @(wpDone ? "g" : wpPend ? "u" : wpRej ? "r" : "u")">
                 @(wpDone ? "Approved" : wpPend ? "Pending" : wpRej ? "Rejected" : "Waiting")
             </span>
         </div>
@@ -258,7 +232,7 @@
                     Production
                     @if (prod != null && (prodDone || prodPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @prod.FullName</span>
+                        <span style="font-weight:400;color:var(--muted)"> — @prod.FullName</span>
                     }
                 </div>
                 <div class="as-who">
@@ -271,7 +245,7 @@
                     <div class="as-when">@Model.LJSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
                 }
             </div>
-            <span class="stage-chip @(prodDone ? "chip-done" : prodPend ? "chip-pending" : "chip-waiting")">
+            <span class="rag @(prodDone ? "g" : prodPend ? "u" : "u")">
                 @(prodDone ? "Approved" : prodPend ? "Pending" : "Waiting")
             </span>
         </div>
@@ -288,7 +262,7 @@
                     Cost Compact — Strategic Buyer
                     @if (buyer != null && (scDone || buyerPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @buyer.FullName</span>
+                        <span style="font-weight:400;color:var(--muted)"> — @buyer.FullName</span>
                     }
                 </div>
                 <div class="as-who">
@@ -302,7 +276,7 @@
                     @if (!string.IsNullOrEmpty(Model.ScComments)) { <div class="as-note">"@Model.ScComments"</div> }
                 }
             </div>
-            <span class="stage-chip @(scDone ? "chip-done" : buyerPend ? "chip-pending" : "chip-waiting")">
+            <span class="rag @(scDone ? "g" : buyerPend ? "u" : "u")">
                 @(scDone ? "Approved" : buyerPend ? "Pending" : "Waiting")
             </span>
         </div>
@@ -319,7 +293,7 @@
                     Sourcing &amp; Procurement
                     @if (sourcing != null && (sourcingDone || sourcingPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @sourcing.FullName</span>
+                        <span style="font-weight:400;color:var(--muted)"> — @sourcing.FullName</span>
                     }
                 </div>
                 <div class="as-who">
@@ -332,7 +306,7 @@
                     <div class="as-when">@Model.SGSignedDate?.ToString("dd MMM yyyy, HH:mm")</div>
                 }
             </div>
-            <span class="stage-chip @(sourcingDone ? "chip-done" : sourcingPend ? "chip-pending" : "chip-waiting")">
+            <span class="rag @(sourcingDone ? "g" : sourcingPend ? "u" : "u")">
                 @(sourcingDone ? "Approved" : sourcingPend ? "Pending" : "Waiting")
             </span>
         </div>
@@ -349,7 +323,7 @@
                     Managing Director approval
                     @if (md != null && (mdDone || mdPend))
                     {
-                        <span style="font-weight:400;color:var(--text2)"> — @md.FullName</span>
+                        <span style="font-weight:400;color:var(--muted)"> — @md.FullName</span>
                     }
                 </div>
                 <div class="as-who">
@@ -364,18 +338,16 @@
                     @if (!string.IsNullOrEmpty(Model.MdComments)) { <div class="as-note">"@Model.MdComments"</div> }
                 }
             </div>
-            <span class="stage-chip @(mdDone && Model.Status == "Approved" ? "chip-done" : mdDone && Model.Status == "Rejected" ? "chip-rej" : mdPend ? "chip-pending" : "chip-waiting")">
+            <span class="rag @(mdDone && Model.Status == "Approved" ? "g" : mdDone && Model.Status == "Rejected" ? "r" : mdPend ? "u" : "u")">
                 @(mdDone && Model.Status == "Approved" ? "Approved" : mdDone && Model.Status == "Rejected" ? "Rejected" : mdPend ? "Pending" : "Waiting")
             </span>
         </div>
 
-    </div>
+    </div></div>
 
     <div class="footer-actions">
-        <a class="btn-ghost" asp-controller="Outsource" asp-action="Index">← All requests</a>
-        <a class="btn-primary" asp-controller="Outsource" asp-action="Track" asp-route-id="@Model.RequestId">
-            Open tracker →
-        </a>
+        <a class="sbtn" asp-controller="Outsource" asp-action="Index">← All requests</a>
+        <a class="sbtn primary" asp-controller="Outsource" asp-action="Track" asp-route-id="@Model.RequestId">Open tracker →</a>
     </div>
 
 </div>
