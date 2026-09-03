@@ -1,4 +1,5 @@
 @model OutsourceRequestApp.Models.OutsourceRequest
+@inject OutsourceRequestApp.Services.AccessControlService Access
 
 @{
     ViewData["Title"] = "New Outsource Request";
@@ -128,7 +129,7 @@
 
                 <div class="fl">
                     <label>Created by</label>
-                    <input value="@User.Identity?.Name" disabled />
+                    <input value="@Access.CurrentDisplayNameOrRaw" disabled />
                 </div>
 
                 <div class="fl">

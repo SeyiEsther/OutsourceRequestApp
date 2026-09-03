@@ -21,22 +21,34 @@ namespace OutsourceRequestApp.Services
     {
         private readonly AppDbContext _db;
         private readonly IHttpContextAccessor _http;
+        private readonly ActiveDirectoryLookup _ad;
 
-        public AccessControlService(AppDbContext db, IHttpContextAccessor http)
+        public AccessControlService(AppDbContext db, IHttpContextAccessor http, ActiveDirectoryLookup ad)
         {
             _db   = db;
             _http = http;
+            _ad   = ad;
         }
 
         /// <summary>The current request's identity name — an e-mail address once resolved by
-        /// <see cref="WindowsIdentityEmailMiddleware"/>, or the raw Windows account if resolution failed.</summary>
+        /// <see cref="WindowsIdentityEmailMiddleware"/>, or the raw Windows account if resolution failed.
+        /// This is an internal matching/notification key, not something to show a person — e-mail
+        /// only exists in this app to send them mail. Use <see cref="CurrentDisplayNameOrRaw"/>
+        /// for anything a user sees on screen.</summary>
         public string CurrentUserName =>
             _http.HttpContext?.User?.Identity?.Name ?? "";
 
-        /// <summary>AD display name for the current user, when it could be resolved. Used only as a
+        /// <summary>AD display name for the current user, when it could be resolved. Used as a
         /// fallback match against an approver/admin's configured full name.</summary>
         public string? CurrentDisplayName =>
             _http.HttpContext?.User?.FindFirst(WindowsIdentityEmailMiddleware.DisplayNameClaimType)?.Value;
+
+        /// <summary>The name to show the signed-in user for themselves (e.g. a "Created by" field,
+        /// the topbar chip) — prefers the DisplayName claim the auth middleware already resolved
+        /// (no extra AD round-trip), falls back to an on-demand AD lookup, and finally to the raw
+        /// identity string if AD can't resolve it either.</summary>
+        public string CurrentDisplayNameOrRaw =>
+            !string.IsNullOrEmpty(CurrentDisplayName) ? CurrentDisplayName! : _ad.DisplayNameOrRaw(CurrentUserName);
 
         public async Task<bool> IsAdminAsync()
         {

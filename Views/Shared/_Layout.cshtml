@@ -1,4 +1,4 @@
-@inject OutsourceRequestApp.Services.ActiveDirectoryLookup Ad
+@inject OutsourceRequestApp.Services.AccessControlService Access
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,16 +23,7 @@
     <div class="topbar-right">
         @await Component.InvokeAsync("NavContext")
         <div class="user-chip">
-            @{
-                // The AD display name is published as a claim by
-                // WindowsIdentityEmailMiddleware when it resolves the Windows
-                // account, avoiding a second AD round-trip on every page load.
-                // Fall back to an on-demand lookup (dev impersonation, or if
-                // that claim is missing for any reason).
-                var _un          = User.Identity?.Name ?? "";
-                var _displayName = User.FindFirst(OutsourceRequestApp.Services.WindowsIdentityEmailMiddleware.DisplayNameClaimType)?.Value;
-                var _shown       = !string.IsNullOrEmpty(_displayName) ? _displayName : Ad.DisplayNameOrRaw(_un);
-            }
+            @{ var _shown = Access.CurrentDisplayNameOrRaw; }
             @(_shown.Length > 0 ? _shown : "—")
         </div>
     </div>
