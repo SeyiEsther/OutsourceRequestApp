@@ -86,10 +86,41 @@ namespace OutsourceRequestApp.Controllers
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
+
+                // CreatedByUsername is stored as an e-mail address (see
+                // WindowsIdentityEmailMiddleware), so a plain Contains(term)
+                // only ever matches against that e-mail — searching a
+                // person's name (what the box is actually labelled for) would
+                // otherwise find nothing. Resolve the search term against
+                // every distinct submitter's AD display name (small, cached
+                // set — one entry per person who has ever submitted a
+                // request) and match any of their e-mails too, so searching
+                // "Lukasz" finds requests submitted by
+                // l.jaworski@rittal-csm.co.uk.
+                var distinctSubmitters = await _db.OutsourceRequests
+                    .Select(r => r.CreatedByUsername)
+                    .Distinct()
+                    .ToListAsync();
+
+                var matchingSubmitters = distinctSubmitters
+                    .Where(u => !string.IsNullOrEmpty(u) &&
+                                _ad.DisplayNameOrRaw(u).Contains(term, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                // Also match a bare or "OSR-"-prefixed request ID — the
+                // search box's placeholder has always claimed ID search
+                // works, but nothing ever implemented it.
+                var strippedId = term.StartsWith("OSR-", StringComparison.OrdinalIgnoreCase)
+                    ? term[4..].TrimStart('0')
+                    : term;
+                int? requestId = int.TryParse(strippedId, out var parsedId) ? parsedId : null;
+
                 query = query.Where(r =>
                     r.PartNumber.Contains(term) ||
                     (r.SapDescription != null && r.SapDescription.Contains(term)) ||
-                    (r.CreatedByUsername != null && r.CreatedByUsername.Contains(term)));
+                    (r.CreatedByUsername != null && r.CreatedByUsername.Contains(term)) ||
+                    matchingSubmitters.Contains(r.CreatedByUsername) ||
+                    (requestId != null && r.RequestId == requestId));
             }
 
             var currentStatus = (status ?? "all").ToLower();
