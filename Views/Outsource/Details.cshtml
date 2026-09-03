@@ -1,5 +1,6 @@
 @model OutsourceRequestApp.Models.OutsourceRequest
 @using OutsourceRequestApp.Models
+@inject OutsourceRequestApp.Services.ActiveDirectoryLookup Ad
 
 @{
     ViewData["Title"] = $"OSR-{Model.RequestId:000000}";
@@ -91,7 +92,7 @@
         <div>
             <div class="d-id">OSR-@Model.RequestId.ToString("000000")</div>
             <div class="d-title">@(Model.SapDescription ?? Model.PartNumber)</div>
-            <div class="d-meta">Submitted @Model.CreatedAt.ToString("dd MMM yyyy, HH:mm") by @Model.CreatedByUsername</div>
+            <div class="d-meta">Submitted @Model.CreatedAt.ToString("dd MMM yyyy, HH:mm") by @Ad.DisplayNameOrRaw(Model.CreatedByUsername)</div>
         </div>
         <div class="detail-actions">
             <span class="rag @ragClass">@statusLabel</span>
@@ -183,7 +184,7 @@
             <div class="as-ico asi-done">✓</div>
             <div class="as-body">
                 <div class="as-role">Work Preparation — submitted</div>
-                <div class="as-who">@Model.CreatedByUsername</div>
+                <div class="as-who">@Ad.DisplayNameOrRaw(Model.CreatedByUsername)</div>
                 <div class="as-when">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
             </div>
             <span class="rag g">Submitted</span>
@@ -206,7 +207,7 @@
                     }
                 </div>
                 <div class="as-who">
-                    @if (wpDone)      { <text>Signed by @Model.JFSignedBy</text> }
+                    @if (wpDone)      { <text>Signed by @Ad.DisplayNameOrRaw(Model.JFSignedBy)</text> }
                     else if (wpPend)  { <text>Awaiting sign-off</text> }
                     else              { <text>Not yet reached</text> }
                 </div>
@@ -236,7 +237,7 @@
                     }
                 </div>
                 <div class="as-who">
-                    @if (prodDone)      { <text>Signed by @Model.LJSignedBy</text> }
+                    @if (prodDone)      { <text>Signed by @Ad.DisplayNameOrRaw(Model.LJSignedBy)</text> }
                     else if (prodPend)  { <text>Awaiting sign-off</text> }
                     else              { <text>Not yet reached</text> }
                 </div>
@@ -266,7 +267,7 @@
                     }
                 </div>
                 <div class="as-who">
-                    @if (scDone)        { <text>Reviewed by @Model.ScReviewedBy</text> }
+                    @if (scDone)        { <text>Reviewed by @Ad.DisplayNameOrRaw(Model.ScReviewedBy)</text> }
                     else if (buyerPend) { <text>Awaiting review</text> }
                     else                { <text>Not yet reached</text> }
                 </div>
@@ -297,7 +298,7 @@
                     }
                 </div>
                 <div class="as-who">
-                    @if (sourcingDone)      { <text>Signed by @Model.SGSignedBy</text> }
+                    @if (sourcingDone)      { <text>Signed by @Ad.DisplayNameOrRaw(Model.SGSignedBy)</text> }
                     else if (sourcingPend)  { <text>Awaiting sign-off</text> }
                     else              { <text>Not yet reached</text> }
                 </div>
@@ -327,8 +328,8 @@
                     }
                 </div>
                 <div class="as-who">
-                    @if (mdDone && Model.Status == "Approved")  { <text>Approved by @Model.MdReviewedBy — outsourcing authorised</text> }
-                    else if (mdDone && Model.Status == "Rejected") { <text>Rejected by @Model.MdReviewedBy</text> }
+                    @if (mdDone && Model.Status == "Approved")  { <text>Approved by @Ad.DisplayNameOrRaw(Model.MdReviewedBy) — outsourcing authorised</text> }
+                    else if (mdDone && Model.Status == "Rejected") { <text>Rejected by @Ad.DisplayNameOrRaw(Model.MdReviewedBy)</text> }
                     else if (mdPend)                            { <text>Awaiting final decision</text> }
                     else                                        { <text>Not yet reached</text> }
                 </div>

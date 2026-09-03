@@ -39,37 +39,26 @@ namespace OutsourceRequestApp.Controllers
                 ? (RequestStatus.RoleLabel(approverRole.RoleKey) is { Length: > 0 } label ? label : approverRole.RoleDisplayName)
                 : "";
 
-            // Pending count + live queue preview for this approver
-            if (approverRole != null)
-            {
-                var statusFilter = RequestStatus.PendingStatusForRole(approverRole.RoleKey);
+            // Every request still awaiting action anywhere in the chain, oldest
+            // first — shown on the dashboard for every role so the whole open
+            // pipeline is visible, not just a per-user/per-approver slice.
+            var openRequests = await _db.OutsourceRequests
+                .Where(r => r.Status == RequestStatus.Submitted || r.Status == RequestStatus.ProductionPending ||
+                            r.Status == RequestStatus.CostCompactPending || r.Status == RequestStatus.SourcingPending ||
+                            r.Status == RequestStatus.MdPending)
+                .OrderBy(r => r.CreatedAt)
+                .ToListAsync();
 
-                if (!string.IsNullOrEmpty(statusFilter))
-                {
-                    ViewBag.PendingCount = await _db.OutsourceRequests.CountAsync(r => r.Status == statusFilter);
-                    ViewBag.QueuePreview = await _db.OutsourceRequests
-                        .Where(r => r.Status == statusFilter)
-                        .OrderBy(r => r.CreatedAt)
-                        .Take(5)
-                        .ToListAsync();
-                }
-                else
-                {
-                    ViewBag.PendingCount = 0;
-                    ViewBag.QueuePreview = new System.Collections.Generic.List<OutsourceRequest>();
-                }
-            }
-            else
-            {
-                ViewBag.PendingCount = 0;
-                ViewBag.QueuePreview = new System.Collections.Generic.List<OutsourceRequest>();
-            }
+            ViewBag.OpenRequests   = openRequests;
+            ViewBag.ApproverRoles  = await _db.ApproverRoles.ToListAsync();
+            ViewBag.PendingCount   = approverRole == null
+                ? 0
+                : openRequests.Count(r => RequestStatus.RoleKeyForPendingStatus(r.Status) == approverRole.RoleKey);
 
-            // My requests count + status breakdown for non-approvers
+            // My requests count + status breakdown
             var myRequests = await _db.OutsourceRequests
                 .Where(r => r.CreatedByUsername != null &&
                             r.CreatedByUsername.ToLower() == currentUser.ToLower())
-                .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
             ViewBag.MyRequestsCount = myRequests.Count;
@@ -78,9 +67,6 @@ namespace OutsourceRequestApp.Controllers
                                                           r.Status == RequestStatus.SourcingPending   || r.Status == RequestStatus.MdPending);
             ViewBag.MyApproved  = myRequests.Count(r => r.Status == RequestStatus.Approved);
             ViewBag.MyRejected  = myRequests.Count(r => r.Status == RequestStatus.Rejected || r.Status == RequestStatus.Cancelled);
-
-            // Recent requests for the dashboard table
-            ViewBag.RecentRequests = myRequests.Take(3).ToList();
 
             return View();
         }

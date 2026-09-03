@@ -18,6 +18,7 @@ namespace OutsourceRequestApp.Controllers
         private readonly WarehouseDbContext _warehouseDb;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly AccessControlService _access;
+        private readonly ActiveDirectoryLookup _ad;
         private readonly ILogger<OutsourceController> _logger;
 
         private static readonly string[] AllowedMimeTypes =
@@ -30,12 +31,13 @@ namespace OutsourceRequestApp.Controllers
 
         public OutsourceController(AppDbContext db, WarehouseDbContext warehouseDb,
                                    IServiceScopeFactory scopeFactory, AccessControlService access,
-                                   ILogger<OutsourceController> logger)
+                                   ActiveDirectoryLookup ad, ILogger<OutsourceController> logger)
         {
             _db           = db;
             _warehouseDb  = warehouseDb;
             _scopeFactory = scopeFactory;
             _access       = access;
+            _ad           = ad;
             _logger       = logger;
         }
 
@@ -638,25 +640,25 @@ namespace OutsourceRequestApp.Controllers
                     r.StartDate?.ToString("dd/MM/yyyy") ?? "",
                     r.EndDate?.ToString("dd/MM/yyyy") ?? "",
                     Csv(RequestStatus.Label(r.Status)),
-                    Csv(r.CreatedByUsername),
+                    Csv(_ad.DisplayNameOrRaw(r.CreatedByUsername)),
                     r.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
-                    Csv(r.JFSignedBy),
+                    Csv(_ad.DisplayNameOrRaw(r.JFSignedBy)),
                     r.JFSignedDate?.ToString("dd/MM/yyyy HH:mm") ?? "",
-                    Csv(r.LJSignedBy),
+                    Csv(_ad.DisplayNameOrRaw(r.LJSignedBy)),
                     r.LJSignedDate?.ToString("dd/MM/yyyy HH:mm") ?? "",
                     r.PpapRequired.HasValue ? (r.PpapRequired.Value ? "Yes" : "No") : "",
                     r.CostInhousePerMonth?.ToString("F2") ?? "",
                     r.CostOutsourcePerMonth?.ToString("F2") ?? "",
                     Csv(r.CostComments),
-                    Csv(r.ScReviewedBy),
+                    Csv(_ad.DisplayNameOrRaw(r.ScReviewedBy)),
                     r.ScReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "",
                     Csv(r.ScComments),
-                    Csv(r.SGSignedBy),
+                    Csv(_ad.DisplayNameOrRaw(r.SGSignedBy)),
                     r.SGSignedDate?.ToString("dd/MM/yyyy HH:mm") ?? "",
-                    Csv(r.MdReviewedBy),
+                    Csv(_ad.DisplayNameOrRaw(r.MdReviewedBy)),
                     r.MdReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "",
                     Csv(r.MdComments),
-                    Csv(r.RejectedBy),
+                    Csv(_ad.DisplayNameOrRaw(r.RejectedBy)),
                     r.RejectedAt?.ToString("dd/MM/yyyy HH:mm") ?? "",
                     Csv(r.RejectionReason)));
             }

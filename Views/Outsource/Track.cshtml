@@ -1,5 +1,6 @@
 @model OutsourceRequestApp.Models.OutsourceRequest
 @using OutsourceRequestApp.Models
+@inject OutsourceRequestApp.Services.ActiveDirectoryLookup Ad
 
 @{
     ViewData["Title"] = $"Track OSR-{Model.RequestId:000000}";
@@ -274,7 +275,7 @@
             <div class="stage-ico si-done">✓</div>
             <div class="stage-body">
                 <div class="stage-role">Request submitted</div>
-                <div class="stage-who">@Model.CreatedByUsername</div>
+                <div class="stage-who">@Ad.DisplayNameOrRaw(Model.CreatedByUsername)</div>
                 <div class="stage-when">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</div>
             </div>
         </div>
@@ -294,7 +295,7 @@
                 </div>
                 <div class="stage-who">
                     @if (wpPending && wp != null) { <text>Awaiting sign-off from @wp.FullName</text> }
-                    else if (wpDone)             { <text>Signed by @Model.JFSignedBy</text> }
+                    else if (wpDone)             { <text>Signed by @Ad.DisplayNameOrRaw(Model.JFSignedBy)</text> }
                     else                          { <text>Not yet reached</text> }
                 </div>
                 @if (wpDone)
@@ -334,7 +335,7 @@
                 </div>
                 <div class="stage-who">
                     @if (prodPending && prod != null) { <text>Awaiting sign-off from @prod.FullName</text> }
-                    else if (prodDone)                { <text>Signed by @Model.LJSignedBy</text> }
+                    else if (prodDone)                { <text>Signed by @Ad.DisplayNameOrRaw(Model.LJSignedBy)</text> }
                     else                               { <text>Not yet reached</text> }
                 </div>
                 @if (prodDone)
@@ -374,7 +375,7 @@
                 </div>
                 <div class="stage-who">
                     @if (buyerPending && buyer != null) { <text>Awaiting PPAP decision and cost impact from @buyer.FullName</text> }
-                    else if (buyerDone)                 { <text>Reviewed by @Model.ScReviewedBy</text> }
+                    else if (buyerDone)                 { <text>Reviewed by @Ad.DisplayNameOrRaw(Model.ScReviewedBy)</text> }
                     else                                 { <text>Not yet reached</text> }
                 </div>
                 @if (buyerDone)
@@ -439,7 +440,7 @@
                 </div>
                 <div class="stage-who">
                     @if (sourcingPending && sourcing != null) { <text>Awaiting sign-off from @sourcing.FullName</text> }
-                    else if (sourcingDone)                    { <text>Signed by @Model.SGSignedBy</text> }
+                    else if (sourcingDone)                    { <text>Signed by @Ad.DisplayNameOrRaw(Model.SGSignedBy)</text> }
                     else                                        { <text>Not yet reached</text> }
                 </div>
                 @if (sourcingDone)
@@ -479,8 +480,8 @@
                 </div>
                 <div class="stage-who">
                     @if (mdPending && md != null) { <text>Awaiting final approval from @md.FullName</text> }
-                    else if (mdDone && isApproved) { <text>Approved by @Model.MdReviewedBy — outsourcing authorised</text> }
-                    else if (mdDone && isRejected) { <text>Rejected by @Model.MdReviewedBy</text> }
+                    else if (mdDone && isApproved) { <text>Approved by @Ad.DisplayNameOrRaw(Model.MdReviewedBy) — outsourcing authorised</text> }
+                    else if (mdDone && isRejected) { <text>Rejected by @Ad.DisplayNameOrRaw(Model.MdReviewedBy)</text> }
                     else                             { <text>Not yet reached</text> }
                 </div>
                 @if (mdDone)
@@ -523,7 +524,7 @@
         <div class="track-note note-cancelled">
             <span style="font-size:16px">✕</span>
             <span>
-                This request was rejected by @Model.RejectedBy on @(Model.RejectedAt?.ToString("dd MMM yyyy, HH:mm")).
+                This request was rejected by @Ad.DisplayNameOrRaw(Model.RejectedBy) on @(Model.RejectedAt?.ToString("dd MMM yyyy, HH:mm")).
                 @(!string.IsNullOrEmpty(Model.RejectionReason) ? $"\"{Model.RejectionReason}\"" : "")
             </span>
         </div>

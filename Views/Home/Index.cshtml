@@ -1,4 +1,5 @@
 @using OutsourceRequestApp.Models
+@inject OutsourceRequestApp.Services.ActiveDirectoryLookup Ad
 @{
     ViewData["Title"] = "Home";
     bool   isAdmin        = (bool)(ViewBag.IsAdmin        ?? false);
@@ -9,8 +10,20 @@
     int    myReview       = (int)(ViewBag.MyReview    ?? 0);
     int    myApproved     = (int)(ViewBag.MyApproved  ?? 0);
     int    myRejected     = (int)(ViewBag.MyRejected  ?? 0);
-    var    recentRequests = ViewBag.RecentRequests as List<OutsourceRequest> ?? new List<OutsourceRequest>();
-    var    queuePreview   = ViewBag.QueuePreview as List<OutsourceRequest> ?? new List<OutsourceRequest>();
+    var    openRequests   = ViewBag.OpenRequests as List<OutsourceRequest> ?? new List<OutsourceRequest>();
+    var    approverRoles  = ViewBag.ApproverRoles as List<ApproverRole> ?? new List<ApproverRole>();
+
+    // "Waiting on" — the role's job title plus the person currently assigned
+    // to it (ApproverRole.FullName is already an admin-typed name, no AD
+    // lookup needed here).
+    string WaitingOn(OutsourceRequest r)
+    {
+        var roleKey = RequestStatus.RoleKeyForPendingStatus(r.Status);
+        var role    = approverRoles.FirstOrDefault(x => x.RoleKey == roleKey);
+        var title   = RequestStatus.RoleLabel(roleKey);
+        if (role == null || string.IsNullOrWhiteSpace(role.FullName)) return title;
+        return $"{title} — {role.FullName}";
+    }
 }
 
 <style>
@@ -29,6 +42,7 @@
     .queue-hero-label strong { color: var(--ink); }
 
     .system-note { font-size: 13px; color: var(--muted); line-height: 1.6; padding: 4px 2px; }
+    .waiting-on { font-size: 12px; font-weight: 600; }
 
     @@media (max-width: 768px) {
         .queue-hero { flex-direction: column; gap: 6px; }
@@ -54,84 +68,11 @@
             <div class="queue-hero-num">@pendingCount</div>
             <div class="queue-hero-label">request@(pendingCount != 1 ? "s" : "") waiting on <strong>your</strong> sign-off right now.</div>
         </div>
-
-        <div class="card">
-            <div class="card-head"><span class="card-title">Pending Queue</span></div>
-            <div class="grid-wrap" style="box-shadow:none;border:none;border-radius:0;margin-bottom:0;">
-                <table class="dash-table">
-                    <thead><tr><th>Request ID</th><th>Part Number</th><th>Submitted By</th><th>Date</th><th></th></tr></thead>
-                    <tbody>
-                        @if (queuePreview.Count == 0)
-                        {
-                            <tr><td colspan="5" class="empty">Queue is clear — nothing waiting on you.</td></tr>
-                        }
-                        else
-                        {
-                            @foreach (var r in queuePreview)
-                            {
-                                <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-                                    <td>OSR-@(r.RequestId.ToString("000000"))</td>
-                                    <td>@r.PartNumber</td>
-                                    <td style="color:var(--muted)">@r.CreatedByUsername</td>
-                                    <td style="color:var(--muted)">@r.CreatedAt.ToString("dd MMM yyyy")</td>
-                                    <td><a class="dl-link" asp-controller="Outsource" asp-action="Track" asp-route-id="@r.RequestId">Review →</a></td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <a class="sbtn sm" asp-controller="Outsource" asp-action="MyApprovals">Full approval queue</a>
-            <a class="sbtn sm" asp-controller="Outsource" asp-action="Index">All requests</a>
-            @if (isAdmin)
-            {
-                <a class="sbtn sm" asp-controller="Admin" asp-action="Index">Admin panel</a>
-            }
-        </div>
     }
     else if (isAdmin)
     {
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
             <a class="sbtn sm" asp-controller="Admin" asp-action="Index">Admin panel</a>
-            <a class="sbtn sm" asp-controller="Outsource" asp-action="Index">All requests</a>
-        </div>
-
-        <div class="home-grid">
-            <div class="card">
-                <div class="card-head"><span class="card-title">Recent Requests</span></div>
-                <div class="grid-wrap" style="box-shadow:none;border:none;border-radius:0;margin-bottom:0;">
-                    <table class="dash-table">
-                        <thead><tr><th>Request ID</th><th>Part Number</th><th>Date</th><th>Status</th></tr></thead>
-                        <tbody>
-                            @if (recentRequests.Count == 0)
-                            {
-                                <tr><td colspan="4" class="empty">No requests submitted yet.</td></tr>
-                            }
-                            else
-                            {
-                                @foreach (var r in recentRequests)
-                                {
-                                    <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-                                        <td>OSR-@(r.RequestId.ToString("000000"))</td>
-                                        <td>@r.PartNumber</td>
-                                        <td style="color:var(--muted)">@r.CreatedAt.ToString("dd MMM yyyy")</td>
-                                        <td><span class="rag @RequestStatus.RagClass(r.Status)">@RequestStatus.Label(r.Status)</span></td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-head"><span class="card-title">System</span></div>
-                <div class="card-body">
-                    <div class="system-note">Manage approver assignments, SMTP settings, and admin access from the Admin panel.</div>
-                </div>
-            </div>
         </div>
     }
     else
@@ -142,50 +83,54 @@
             <div class="kpi"><div class="kpi-label">Approved</div><div class="kpi-val green">@myApproved</div></div>
             <div class="kpi"><div class="kpi-label">Rejected</div><div class="kpi-val red">@myRejected</div></div>
         </div>
-
-        <div class="home-grid">
-            <div class="card">
-                <div class="card-head"><span class="card-title">Recent Requests</span></div>
-                <div class="grid-wrap" style="box-shadow:none;border:none;border-radius:0;margin-bottom:0;">
-                    <table class="dash-table">
-                        <thead><tr><th>Request ID</th><th>Part Number</th><th>Date</th><th>Status</th></tr></thead>
-                        <tbody>
-                            @if (recentRequests.Count == 0)
-                            {
-                                <tr><td colspan="4" class="empty">No requests submitted yet.</td></tr>
-                            }
-                            else
-                            {
-                                @foreach (var r in recentRequests)
-                                {
-                                    <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
-                                        <td>OSR-@(r.RequestId.ToString("000000"))</td>
-                                        <td>@r.PartNumber</td>
-                                        <td style="color:var(--muted)">@r.CreatedAt.ToString("dd MMM yyyy")</td>
-                                        <td><span class="rag @RequestStatus.RagClass(r.Status)">@RequestStatus.Label(r.Status)</span></td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;padding-top:12px;">
-                    <a class="sbtn sm" asp-controller="Outsource" asp-action="MyRequests">My requests</a>
-                    <a class="sbtn sm" asp-controller="Outsource" asp-action="Index">All requests</a>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-head"><span class="card-title">Approval Stages</span></div>
-                <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
-                    <div class="meta-item"><span class="meta-label">Stage 1</span><span class="meta-val">Work Preparation</span></div>
-                    <div class="meta-item"><span class="meta-label">Stage 2</span><span class="meta-val">Production</span></div>
-                    <div class="meta-item"><span class="meta-label">Stage 3</span><span class="meta-val">Cost Compact</span></div>
-                    <div class="meta-item"><span class="meta-label">Stage 4</span><span class="meta-val">Sourcing &amp; Procurement</span></div>
-                    <div class="meta-item"><span class="meta-label">Stage 5</span><span class="meta-val">MD Approval</span></div>
-                </div>
-            </div>
-        </div>
     }
+
+    <div class="card">
+        <div class="card-head">
+            <span class="card-title">All Open Requests</span>
+            <span class="card-sub">@openRequests.Count waiting somewhere in the approval chain</span>
+        </div>
+        <div class="grid-wrap" style="box-shadow:none;border:none;border-radius:0;margin-bottom:0;">
+            <table class="dash-table">
+                <thead><tr><th>Request ID</th><th>Part Number</th><th>Submitted By</th><th>Date</th><th>Waiting On</th><th></th></tr></thead>
+                <tbody>
+                    @if (openRequests.Count == 0)
+                    {
+                        <tr><td colspan="6" class="empty">Nothing open — every request has been approved, rejected, or withdrawn.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var r in openRequests)
+                        {
+                            <tr onclick="location.href='@Url.Action("Track", "Outsource", new { id = r.RequestId })'">
+                                <td>OSR-@(r.RequestId.ToString("000000"))</td>
+                                <td>@r.PartNumber</td>
+                                <td style="color:var(--muted)">@Ad.DisplayNameOrRaw(r.CreatedByUsername)</td>
+                                <td style="color:var(--muted)">@r.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td><span class="waiting-on">@WaitingOn(r)</span></td>
+                                <td><a class="dl-link" asp-controller="Outsource" asp-action="Track" asp-route-id="@r.RequestId">Review →</a></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        @if (isApprover)
+        {
+            <a class="sbtn sm" asp-controller="Outsource" asp-action="MyApprovals">My approval queue</a>
+        }
+        else
+        {
+            <a class="sbtn sm" asp-controller="Outsource" asp-action="MyRequests">My requests</a>
+        }
+        <a class="sbtn sm" asp-controller="Outsource" asp-action="Index">All requests (incl. closed)</a>
+        @if (isAdmin)
+        {
+            <a class="sbtn sm" asp-controller="Admin" asp-action="Index">Admin panel</a>
+        }
+    </div>
 
 </div>

@@ -1,4 +1,5 @@
 @model List<OutsourceRequestApp.Models.OutsourceRequest>
+@inject OutsourceRequestApp.Services.ActiveDirectoryLookup Ad
 
 @{
     ViewData["Title"] = "All Requests";
@@ -132,7 +133,7 @@
                                     <div style="font-size:11px;color:var(--muted);margin-top:2px;">@r.SapDescription</div>
                                 }
                             </td>
-                            <td style="color:var(--muted)">@r.CreatedByUsername</td>
+                            <td style="color:var(--muted)">@Ad.DisplayNameOrRaw(r.CreatedByUsername)</td>
                             <td>@r.Quantity</td>
                             <td style="color:var(--muted)">@(r.StartDate.HasValue ? r.StartDate.Value.ToString("dd MMM yy") : "—")</td>
                             <td>
